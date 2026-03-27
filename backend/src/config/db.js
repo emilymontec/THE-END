@@ -1,84 +1,55 @@
-// backend/db.js
-import Database from 'better-sqlite3';
+import pkg from 'pg';
+const { Pool } = pkg;
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-// Esto crea cine.db si no existe
-export const db = new Database('cine.db');
+dotenv.config();
 
-// Crear tabla de películas si no existe
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS peliculas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    titulo TEXT NOT NULL,
-    genero TEXT,
-    duracion INTEGER
-  )
-`).run();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Crear tabla de funciones
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS funciones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pelicula_id INTEGER NOT NULL,
-    fecha_hora TEXT NOT NULL,
-    precio REAL DEFAULT 10000,
-    FOREIGN KEY(pelicula_id) REFERENCES peliculas(id)
-  )
-`).run();
-
-// Crear tabla de asientos
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS asientos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    fila TEXT,
-    columna INTEGER
-  )
-`).run();
-
-// Crear tabla de función-asientos (disponibilidad)
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS funcion_asientos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    funcion_id INTEGER NOT NULL,
-    asiento_id INTEGER NOT NULL,
-    estado TEXT DEFAULT 'disponible',
-    UNIQUE(funcion_id, asiento_id),
-    FOREIGN KEY(funcion_id) REFERENCES funciones(id),
-    FOREIGN KEY(asiento_id) REFERENCES asientos(id)
-  )
-`).run();
-
-// Crear tabla de tiquetes
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS tiquetes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo TEXT UNIQUE,
-    funcion_id INTEGER NOT NULL,
-    total REAL,
-    estado TEXT DEFAULT 'activo',
-    fecha_compra TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(funcion_id) REFERENCES funciones(id)
-  )
-`).run();
-
-// Crear tabla detalle_tiquete (asientos comprados)
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS detalle_tiquete (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tiquete_id INTEGER NOT NULL,
-    asiento_id INTEGER NOT NULL,
-    precio_unitario REAL,
-    FOREIGN KEY(tiquete_id) REFERENCES tiquetes(id),
-    FOREIGN KEY(asiento_id) REFERENCES asientos(id)
-  )
-`).run();
-
-// Insertar asientos si no existen
-const count = db.prepare('SELECT COUNT(*) as count FROM asientos').get().count;
-if (count === 0) {
-  const stmt = db.prepare('INSERT INTO asientos(fila, columna) VALUES(?,?)');
-  for (let fila = 'A'; fila <= 'F'; fila = String.fromCharCode(fila.charCodeAt(0) + 1)) {
-    for (let col = 1; col <= 5; col++) {
-      stmt.run(fila, col);
-    }
+// Configuración de la conexión a PostgreSQL (Nhost)
+const pool = new Pool({
+  connectionString: process.env.NHOST_DB_URL,
+  ssl: {
+    rejectUnauthorized: false // Requerido para conexiones seguras a Nhost
   }
-}
+});
+
+// Probar conexión y sincronizar tablas
+pool.connect(async (err, client, release) => {
+  if (err) {
+    return console.error('Error adquiriendo cliente:', err.stack);
+  }
+  console.log('Conectado a la base de datos de Nhost (PostgreSQL)');
+  
+  // Sincronizar tablas automáticamente al iniciar
+  try {
+    const sqlPath = path.join(__dirname, '../../../entitys.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      await client.query(sql);
+      console.log('Tablas sincronizadas con Nhost (entitys.sql)');
+      
+      // Opcional: Insertar asientos base si no hay
+      const seatCount = await client.query('SELECT COUNT(*) FROM asientos');
+      if (parseInt(seatCount.rows[0].count) === 0) {
+        console.log('Insertando asientos base...');
+        const filas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+        for (let f of filas) {
+          for (let c = 1; c <= 15; c++) {
+            await client.query('INSERT INTO asientos(numero, fila, columna) VALUES($1, $2, $3)', [(filas.indexOf(f) * 15) + c, f, c]);
+          }
+        }
+        console.log('150 asientos creados.');
+      }
+    }
+  } catch (syncErr) {
+    console.error('Error sincronizando tablas:', syncErr.message);
+  } finally {
+    release();
+  }
+});
+
+export const db = pool;
