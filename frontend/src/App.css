@@ -751,14 +751,14 @@ tr:hover td {
   }
 
   /* Movie Grid */
-  .movie-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
+  .featured-movie-container {
+    grid-template-columns: repeat(12, 1fr);
   }
 
   .featured-movie {
-    grid-column: span 1;
+    grid-column: span 12;
+    justify-self: center;
+    max-width: 90%;
   }
 
   .featured-poster-container {
@@ -989,13 +989,14 @@ tr:hover td {
   }
 
   /* Movie Grid */
-  .movie-grid {
-    grid-template-columns: repeat(6, 1fr);
-    gap: 24px;
+  .featured-movie-container {
+    grid-template-columns: repeat(12, 1fr);
   }
 
   .featured-movie {
-    grid-column: span 6;
+    grid-column: span 12;
+    justify-self: center;
+    max-width: 85%;
   }
 
   .featured-poster-container {
