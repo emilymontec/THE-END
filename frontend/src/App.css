@@ -784,10 +784,12 @@ tr:hover td {
   }
 
   .secondary-grid-centered {
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    grid-template-columns: 1fr;
     gap: 16px;
-    max-width: 400px;
+    max-width: 280px;
     margin: 12px auto 0;
+    grid-column: span 12;
+    justify-self: center;
   }
 
   .secondary-movie-item .movie-meta {
@@ -1018,11 +1020,13 @@ tr:hover td {
   }
 
   .secondary-grid-centered {
-    grid-template-columns: repeat(2, minmax(200px, 1fr));
+    grid-template-columns: 1fr;
     gap: 20px;
-    max-width: 500px;
+    max-width: 280px;
     margin: 16px auto 0;
     width: 100%;
+    grid-column: span 12;
+    justify-self: center;
   }
 
   .secondary-movie {
@@ -1265,20 +1269,24 @@ tr:hover td {
 /* TABLET - Medium (768px - 1023px) - Movie Grid Adjustments */
 @media (max-width: 768px) {
   .secondary-grid-centered {
-    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    grid-template-columns: 1fr;
     gap: 20px;
-    max-width: 600px;
+    max-width: 280px;
     margin: 24px auto 0;
+    grid-column: span 12;
+    justify-self: center;
   }
 }
 
 /* MOBILE - Small (480px - 767px) - Movie Grid Adjustments */
 @media (max-width: 480px) {
   .secondary-grid-centered {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    grid-template-columns: 1fr;
     gap: 12px;
-    max-width: 320px;
+    max-width: 280px;
     margin: 16px auto 0;
+    grid-column: span 12;
+    justify-self: center;
   }
 }
 
