@@ -106,6 +106,7 @@ THE-END/
 │   ├── public/
 │   └── package.json
 ├── entitys.sql                 # Script de base de datos
+├── fix_asientos.sql            # Script de corrección de asientos
 ├── package.json
 └── README.md
 ```
@@ -344,6 +345,93 @@ npm start
 - Los asientos se bloquean temporalmente durante la selección para evitar doble reserva
 - Los tiquetes generan códigos QR únicos para validación
 - El frontend se conecta al backend a través de la variable de entorno `VITE_API_URL`
+
+## 🔧 Solución de Problemas
+
+### Problema: No aparecen los asientos al comprar boletas
+
+Si al seleccionar una función no aparecen los asientos, sigue estos pasos:
+
+#### 1. Verificar que existan asientos en la base de datos
+
+```sql
+SELECT COUNT(*) as total_asientos FROM asientos;
+```
+
+Debería mostrar 150 asientos. Si muestra 0, ejecuta el script de corrección:
+
+```bash
+psql -U tu_usuario -d tu_base_datos -f fix_asientos.sql
+```
+
+#### 2. Verificar que las funciones tengan asientos asociados
+
+```sql
+SELECT 
+    f.id as funcion_id,
+    f.fecha,
+    f.hora,
+    COUNT(fa.id) as total_asientos
+FROM funciones f
+LEFT JOIN funcion_asiento fa ON f.id = fa.funcion_id
+GROUP BY f.id, f.fecha, f.hora;
+```
+
+Si `total_asientos` es 0, ejecuta el script `fix_asientos.sql` para asociar los asientos.
+
+#### 3. Verificar la consola del backend
+
+Revisa los logs del backend para ver si hay errores:
+
+```bash
+cd backend
+npm run dev
+```
+
+Busca mensajes como:
+- "Insertando 150 asientos base..."
+- "150 asientos creados (15x10)."
+
+#### 4. Verificar la consola del navegador
+
+Abre las herramientas de desarrollo del navegador (F12) y revisa:
+- La pestaña **Console** para errores de JavaScript
+- La pestaña **Network** para ver las peticiones a la API
+
+#### 5. Reiniciar el backend
+
+Si los asientos no se crean automáticamente, reinicia el backend:
+
+```bash
+cd backend
+npm run dev
+```
+
+### Script de Corrección Rápida
+
+El archivo [`fix_asientos.sql`](fix_asientos.sql) contiene:
+- Inserción de 150 asientos si no existen
+- Asociación de asientos a funciones existentes
+- Limpieza de bloqueos temporales expirados
+- Consultas de verificación
+
+### Estructura de la Tabla de Asientos
+
+```
+asientos
+├── id (SERIAL PRIMARY KEY)
+├── numero (INT) - Número del asiento (1-150)
+├── fila (CHAR) - Fila (A-O)
+├── columna (INT) - Columna (1-10)
+└── estado (VARCHAR) - 'activo' o 'inactivo'
+
+funcion_asiento
+├── id (SERIAL PRIMARY KEY)
+├── funcion_id (INT) - FK a funciones
+├── asiento_id (INT) - FK a asientos
+├── ocupado (BOOLEAN) - Si está vendido
+└── bloqueado_hasta (TIMESTAMP) - Bloqueo temporal
+```
 
 ## 🤝 Contribución
 
