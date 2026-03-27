@@ -720,16 +720,71 @@ export default function App() {
                   <div className="screen-line"></div>
                   <span className="screen-text">Superficie de Proyección</span>
                 </div>
-                <div className="seats-grid-stitch">
-                  {seats.map(seat => (
-                    <div 
-                      key={seat.mapping_id} 
-                      className={`seat-stitch ${seat.estado} ${selectedSeats.includes(seat.asiento_id) ? 'selected' : ''}`}
-                      onClick={() => seat.estado !== 'vendido' && toggleSeat(seat.asiento_id)}
-                    >
-                      {seat.fila}{seat.columna}
-                    </div>
-                  ))}
+                
+                {/* Leyenda de asientos */}
+                <div className="seat-legend" style={{display:'flex', justifyContent:'center', gap:'24px', marginBottom:'24px', flexWrap:'wrap'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <div style={{width:'24px', height:'24px', background:'#4a4a4a', borderRadius:'4px'}}></div>
+                    <span className="movie-sub-meta" style={{color:'black'}}>Disponible</span>
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <div style={{width:'24px', height:'24px', background:'var(--primary)', borderRadius:'4px'}}></div>
+                    <span className="movie-sub-meta" style={{color:'black'}}>Seleccionado</span>
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <div style={{width:'24px', height:'24px', background:'#a00', borderRadius:'4px'}}></div>
+                    <span className="movie-sub-meta" style={{color:'black'}}>Ocupado</span>
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <div style={{width:'24px', height:'24px', background:'#ff9800', borderRadius:'4px'}}></div>
+                    <span className="movie-sub-meta" style={{color:'black'}}>Bloqueado</span>
+                  </div>
+                </div>
+
+                {/* Asientos organizados por filas */}
+                <div className="seats-container" style={{display:'flex', flexDirection:'column', gap:'8px', alignItems:'center'}}>
+                  {(() => {
+                    // Agrupar asientos por fila
+                    const seatsByRow = {};
+                    seats.forEach(seat => {
+                      if (!seatsByRow[seat.fila]) {
+                        seatsByRow[seat.fila] = [];
+                      }
+                      seatsByRow[seat.fila].push(seat);
+                    });
+                    
+                    // Ordenar filas alfabéticamente
+                    const sortedRows = Object.keys(seatsByRow).sort();
+                    
+                    return sortedRows.map(fila => (
+                      <div key={fila} style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                        <span className="admit-one" style={{width:'20px', textAlign:'center', fontSize:'0.8rem'}}>{fila}</span>
+                        <div style={{display:'flex', gap:'6px'}}>
+                          {seatsByRow[fila]
+                            .sort((a, b) => a.columna - b.columna)
+                            .map(seat => (
+                              <div 
+                                key={seat.mapping_id} 
+                                className={`seat-stitch ${seat.estado} ${selectedSeats.includes(seat.asiento_id) ? 'selected' : ''}`}
+                                onClick={() => seat.estado !== 'vendido' && seat.estado !== 'bloqueado' && toggleSeat(seat.asiento_id)}
+                                style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: seat.estado === 'vendido' || seat.estado === 'bloqueado' ? 'not-allowed' : 'pointer',
+                                  opacity: seat.estado === 'vendido' ? 0.5 : 1
+                                }}
+                              >
+                                {seat.columna}
+                              </div>
+                            ))}
+                        </div>
+                        <span className="admit-one" style={{width:'20px', textAlign:'center', fontSize:'0.8rem'}}>{fila}</span>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </section>
 
@@ -755,6 +810,16 @@ export default function App() {
                     <div style={{marginTop:'24px', padding:'16px', border:'1px dashed var(--secondary)', textAlign:'center'}}>
                       <span className="pre-title" style={{fontSize:'0.6rem'}}>Asientos Seleccionados</span>
                       <p className="main-title" style={{fontSize:'1.5rem', margin:'8px 0'}}>{selectedSeats.length > 0 ? selectedSeats.length : '0'}</p>
+                      {selectedSeats.length > 0 && (
+                        <div style={{marginTop:'8px', fontSize:'0.7rem', color:'var(--secondary)', fontWeight:'700'}}>
+                          {seats.filter(s => selectedSeats.includes(s.asiento_id)).map(s => `${s.fila}${s.columna}`).join(', ')}
+                        </div>
+                      )}
+                      {selectedSeats.length === 0 && (
+                        <p className="movie-sub-meta" style={{fontSize:'0.7rem', marginTop:'8px', color:'#999'}}>
+                          Haz clic en los asientos para seleccionarlos
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

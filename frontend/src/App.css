@@ -551,11 +551,54 @@ input:focus, select:focus {
   color: rgba(119, 90, 25, 0.4);
   cursor: pointer;
   transition: all 0.3s;
+  border-radius: 4px;
 }
 
-.seat-stitch:hover { background: var(--primary-container); color: white; }
-.seat-stitch.selected { background: var(--primary); color: white; border: none; }
-.seat-stitch.vendido { background: var(--tertiary-container); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+.seat-stitch:hover:not(.vendido):not(.bloqueado) { 
+  background: var(--primary-container); 
+  color: white; 
+  transform: scale(1.1);
+}
+
+.seat-stitch.selected { 
+  background: var(--primary); 
+  color: white; 
+  border: none; 
+  box-shadow: 0 0 8px rgba(119, 90, 25, 0.5);
+}
+
+.seat-stitch.vendido { 
+  background: #a00; 
+  color: rgba(255,255,255,0.5); 
+  cursor: not-allowed; 
+  border-color: #800;
+}
+
+.seat-stitch.bloqueado { 
+  background: #ff9800; 
+  color: white; 
+  cursor: not-allowed; 
+  border-color: #f57c00;
+}
+
+.seat-stitch.disponible {
+  background: #4a4a4a;
+  color: #ddd;
+  border-color: #666;
+}
+
+.seats-container {
+  padding: 20px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 8px;
+}
+
+.seat-legend {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
 
 /* Visual Ticket Card */
 .ticket-panel {
