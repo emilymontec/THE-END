@@ -631,7 +631,7 @@ export default function App() {
                       </article>
 
                       {/* Secondary Movies Section */}
-                      <div className="secondary-grid" style={{gridColumn: 'span 12', marginTop: '40px'}}>
+                      <div className="secondary-grid-centered" style={{marginTop: '40px'}}>
                         {secondaryMovies.map(m => (
                           <article key={m.id} className="secondary-movie-item" style={{display:'flex', flexDirection:'column'}}>
                             <div className="poster-frame" style={{flex:1, display:'flex', flexDirection:'column'}}>
@@ -683,16 +683,16 @@ export default function App() {
 
           {/* SHOWTIMES */}
           {page === 'showtimes' && (
-            <div className="gold-frame" style={{marginTop:'40px', background:'white', padding:'48px'}}>
+            <div className="gold-frame showtimes-frame" style={{marginTop:'40px', background:'white'}}>
               <span className="pre-title">Horarios</span>
-              <h2 className="main-title" style={{fontSize:'3rem', textAlign:'left', marginBottom:'40px'}}>{selectedMovie.titulo}</h2>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:'48px'}}>
-                <div className="poster-frame">
+              <h2 className="main-title showtimes-title">{selectedMovie.titulo}</h2>
+              <div className="showtimes-content">
+                <div className="poster-frame showtimes-poster">
                   <img src={getImageUrl(selectedMovie.imagen_url)} alt={selectedMovie.titulo} style={{width:'100%', aspectRatio:'2/3', objectFit:'cover'}} />
                 </div>
-                <div>
+                <div className="showtimes-info">
                   <p className="movie-summary" style={{fontSize:'1.5rem', marginBottom:'32px'}}>{selectedMovie.descripcion}</p>
-                  <div className="movie-grid" style={{gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'16px'}}>
+                  <div className="showtimes-timeslots">
                     {showtimes.map(s => (
                       <div key={s.id} className="time-slot evening" onClick={() => handleSelectShowtime(s)}>
                         <span className="time-label">{s.fecha}</span>
@@ -701,7 +701,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <button className="btn-marquee" style={{marginTop:'40px', width:'200px'}} onClick={() => setPage('movies')}>VOLVER</button>
+                  <button className="btn-marquee btn-volver" onClick={() => setPage('movies')}>VOLVER</button>
                 </div>
               </div>
             </div>
@@ -836,8 +836,8 @@ export default function App() {
 
           {/* MANAGEMENT (Simplified Admin/Staff View) */}
           {(page === 'dashboard' || page === 'validar') && (
-            <div className="movie-grid" style={{marginTop:'40px'}}>
-              <aside className="secondary-movie" style={{gridColumn:'span 3'}}>
+            <div className="admin-layout-wrapper">
+              <aside className="admin-menu-centered">
                 <div className="gold-frame" style={{background:'var(--surface-container-high)', border:'none', padding:'24px'}}>
                   <h2 className="admit-one" style={{marginBottom:'24px'}}>Gestión</h2>
                   <nav style={{display:'flex', flexDirection:'column', gap:'8px'}}>
@@ -855,7 +855,7 @@ export default function App() {
                 </div>
               </aside>
 
-              <main style={{gridColumn:'span 9'}}>
+              <main className="admin-content-main">
                 {page === 'validar' ? (
                   <div className="gold-frame" style={{background:'white', padding:'48px', textAlign:'center'}}>
                     <span className="pre-title">Control de Seguridad</span>
@@ -884,6 +884,7 @@ export default function App() {
                           <h3 className="movie-meta-title">Registros de Personal</h3>
                           <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => setShowUserModal(true)}>+ AGREGAR PERSONAL</button>
                         </div>
+                        <div className="admin-tables-wrapper">
                         <table style={{width:'100%', borderCollapse:'collapse'}}>
                           <thead>
                             <tr style={{borderBottom:'2px solid var(--secondary)'}}>
@@ -904,6 +905,7 @@ export default function App() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ) : adminTab === 'movies' ? (
                       <div>
@@ -911,6 +913,7 @@ export default function App() {
                           <h3 className="movie-meta-title">Gestión de Películas</h3>
                           <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => { setMovieForm({ titulo:'', genero:'', duracion:'', clasificacion:'', descripcion:'', imagen_url:'', estado:'activa' }); setShowMovieModal(true); }}>+ AGREGAR</button>
                         </div>
+                        <div className="admin-tables-wrapper">
                         <table style={{width:'100%', borderCollapse:'collapse'}}>
                           <thead>
                             <tr style={{borderBottom:'2px solid var(--secondary)'}}>
@@ -945,6 +948,7 @@ export default function App() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ) : (
                       <div>
@@ -962,6 +966,7 @@ export default function App() {
                         {allSales.length > 0 && (
                           <div style={{marginTop:'32px'}}>
                             <h4 className="admit-one" style={{marginBottom:'16px'}}>Últimas Ventas</h4>
+                            <div className="admin-tables-wrapper">
                             <table style={{width:'100%', borderCollapse:'collapse'}}>
                               <thead>
                                 <tr style={{borderBottom:'2px solid var(--secondary)'}}>
@@ -986,6 +991,7 @@ export default function App() {
                                 ))}
                               </tbody>
                             </table>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1092,10 +1098,10 @@ export default function App() {
 
       {confirmModal.show && (
         <div className="modal-overlay" style={{zIndex: 3000}}>
-          <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'400px', padding:'40px', textAlign:'center'}}>
+          <div className="gold-frame confirm-modal-content" style={{background:'white', width:'90%', maxWidth:'400px', padding:'40px'}}>
             <span className="pre-title" style={{fontSize:'0.6rem'}}>{confirmModal.title}</span>
-            <h3 className="movie-meta-title" style={{fontSize:'1.5rem', margin:'16px 0'}}>{confirmModal.message}</h3>
-            <div style={{display:'flex', gap:'16px', marginTop:'32px'}}>
+            <h3 className="movie-meta-title" style={{fontSize:'1.5rem'}}>{confirmModal.message}</h3>
+            <div>
               <button className="btn-marquee" style={{background:'var(--secondary)', flex:1, padding:'12px'}} onClick={() => setConfirmModal({ ...confirmModal, show: false })}>CANCELAR</button>
               <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={confirmModal.onConfirm}>CONFIRMAR</button>
             </div>
