@@ -229,6 +229,7 @@ input:focus, select:focus {
   color: var(--secondary);
   font-size: 0.75rem;
   margin-bottom: 8px;
+  justify-content: center;
 }
 
 .main-title {
@@ -254,6 +255,7 @@ input:focus, select:focus {
   font-style: italic;
   color: #584141;
   line-height: 1.4;
+  width: 280px;
 }
 
 /* Bento-ish Movie Grid */
@@ -295,7 +297,8 @@ input:focus, select:focus {
   display: flex;
   flex-direction: column;
   max-width: 1200px;
-  margin: 0 auto;
+  justify-self: center;
+  width: 100%;
 }
 
 .gold-frame {
@@ -1444,7 +1447,8 @@ tr:hover td {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .sales-cards-vertical .poster-frame {
@@ -1647,9 +1651,9 @@ tr:hover td {
   }
 
   .admin-menu-centered {
-    width: 100%;
-    min-width: auto;
-    margin: 0;
+    width: 280px;
+    min-width: 280px;
+    margin: 0 auto;
   }
 
   .admin-menu-centered .gold-frame {

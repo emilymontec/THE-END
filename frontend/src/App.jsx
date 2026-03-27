@@ -951,14 +951,14 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      <div>
+                      <div className="gold-frame" style={{background:'white', padding:'32px'}}>
                         <h3 className="movie-meta-title" style={{marginBottom:'32px', textAlign:'center'}}>Panel de Ventas</h3>
-                        <div className="movie-grid" style={{display:'flex', justifyContent:'center', gap:'16px', marginBottom:'40px'}}>
-                          <div className="poster-frame" style={{textAlign:'center', minWidth:'250px'}}>
+                        <div className="sales-cards-vertical" style={{marginBottom:'40px'}}>
+                          <div className="poster-frame" style={{textAlign:'center'}}>
                             <span className="admit-one">Ingresos Totales</span>
                             <p className="main-title" style={{fontSize:'2rem', margin:'8px 0'}}>${parseFloat(stats?.totalMoney || 0).toLocaleString()}</p>
                           </div>
-                          <div className="poster-frame" style={{textAlign:'center', minWidth:'250px'}}>
+                          <div className="poster-frame" style={{textAlign:'center'}}>
                             <span className="admit-one">Tiquetes Vendidos</span>
                             <p className="main-title" style={{fontSize:'2rem', margin:'8px 0'}}>{stats?.totalTickets || 0}</p>
                           </div>
