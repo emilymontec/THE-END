@@ -260,10 +260,25 @@ input:focus, select:focus {
 
 /* Bento-ish Movie Grid */
 .movie-grid {
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+/* Featured Movie Container - Centered */
+.featured-movie-container {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 24px;
   margin-bottom: 40px;
+  width: 100%;
+}
+
+.secondary-grid-container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+  margin-bottom: 40px;
+  width: 100%;
 }
 
 .secondary-grid {

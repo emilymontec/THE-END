@@ -587,56 +587,59 @@ export default function App() {
                   
                   return (
                     <>
-                      {/* Featured Movie */}
-                      <article className="featured-movie">
-                        <div className="gold-frame">
-                          <div className="featured-poster-container">
-                            <img src={getImageUrl(featuredMovie.imagen_url)} alt={featuredMovie.titulo} className="featured-poster" />
-                            <div className="featured-overlay">
-                              <span className="featured-badge">Presentación Estelar</span>
-                              <h2 className="featured-title">{featuredMovie.titulo}</h2>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="movie-meta" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'24px'}}>
-                          <div style={{flex:1}}>
-                            <div className="movie-header">
-                              <div className="rating-box">{featuredMovie.clasificacion || 'A'}</div>
-                              <span className="movie-sub-meta">{featuredMovie.genero} • {featuredMovie.duracion} MIN</span>
-                            </div>
-                            <p className="movie-summary">{featuredMovie.descripcion}</p>
-                            
-                            {/* Horarios y Disponibilidad */}
-                            <div style={{marginTop:'16px'}}>
-                              <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>Horarios Disponibles:</span>
-                              <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).slice(0, 4).map(s => (
-                                  <span key={s.id} className="featured-badge" style={{background:'var(--secondary)', margin:0, fontSize:'0.6rem'}}>
-                                    {s.hora.slice(0,5)}
-                                  </span>
-                                ))}
-                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length === 0 && (
-                                  <span className="movie-sub-meta" style={{color:'#999'}}>Próximamente</span>
-                                )}
+                      {/* Featured Movie Container */}
+                      <div className="featured-movie-container">
+                        <article className="featured-movie">
+                          <div className="gold-frame">
+                            <div className="featured-poster-container">
+                              <img src={getImageUrl(featuredMovie.imagen_url)} alt={featuredMovie.titulo} className="featured-poster" />
+                              <div className="featured-overlay">
+                                <span className="featured-badge">Presentación Estelar</span>
+                                <h2 className="featured-title">{featuredMovie.titulo}</h2>
                               </div>
                             </div>
                           </div>
-                          <div style={{display:'flex', flexDirection:'column', gap:'12px', alignItems:'flex-end'}}>
-                            <div className="rating-box" style={{width:'auto', padding:'0 10px', height:'30px', fontSize:'0.7rem', borderColor:'var(--primary)', color:'var(--primary)'}}>
-                              {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? 'DISPONIBLE' : 'AGOTADO'}
+                          <div className="movie-meta" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'24px'}}>
+                            <div style={{flex:1}}>
+                              <div className="movie-header">
+                                <div className="rating-box">{featuredMovie.clasificacion || 'A'}</div>
+                                <span className="movie-sub-meta">{featuredMovie.genero} • {featuredMovie.duracion} MIN</span>
+                              </div>
+                              <p className="movie-summary">{featuredMovie.descripcion}</p>
+                              
+                              {/* Horarios y Disponibilidad */}
+                              <div style={{marginTop:'16px'}}>
+                                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>Horarios Disponibles:</span>
+                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                                  {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).slice(0, 4).map(s => (
+                                    <span key={s.id} className="featured-badge" style={{background:'var(--secondary)', margin:0, fontSize:'0.6rem'}}>
+                                      {s.hora.slice(0,5)}
+                                    </span>
+                                  ))}
+                                  {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length === 0 && (
+                                    <span className="movie-sub-meta" style={{color:'#999'}}>Próximamente</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>COMPRAR BOLETA</button>
+                            <div style={{display:'flex', flexDirection:'column', gap:'12px', alignItems:'flex-end'}}>
+                              <div className="rating-box" style={{width:'auto', padding:'0 10px', height:'30px', fontSize:'0.7rem', borderColor:'var(--primary)', color:'var(--primary)'}}>
+                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? 'DISPONIBLE' : 'AGOTADO'}
+                              </div>
+                              <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>COMPRAR BOLETA</button>
+                            </div>
                           </div>
-                        </div>
-                      </article>
+                        </article>
+                      </div>
 
-                      {/* Secondary Movies Section */}
-                      <div className="secondary-grid-centered" style={{marginTop: '40px'}}>
-                        {secondaryMovies.map(m => (
-                          <article key={m.id} className="secondary-movie-item" style={{display:'flex', flexDirection:'column'}}>
-                            <div className="poster-frame" style={{flex:1, display:'flex', flexDirection:'column'}}>
-                              <div className="secondary-poster-container" style={{flex:1}}>
-                                <img src={getImageUrl(m.imagen_url)} alt={m.titulo} className="secondary-poster" />
+                      {/* Secondary Movies Container */}
+                      <div className="secondary-grid-container">
+                        <div className="secondary-grid-centered">
+                          {secondaryMovies.map(m => (
+                            <article key={m.id} className="secondary-movie-item" style={{display:'flex', flexDirection:'column'}}>
+                              <div className="poster-frame" style={{flex:1, display:'flex', flexDirection:'column'}}>
+                                <div className="secondary-poster-container" style={{flex:1}}>
+                                  <img src={getImageUrl(m.imagen_url)} alt={m.titulo} className="secondary-poster" />
                               </div>
                             </div>
                             <div className="movie-meta" style={{minHeight:'220px', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
@@ -669,6 +672,7 @@ export default function App() {
                             </div>
                           </article>
                         ))}
+                        </div>
                       </div>
                     </>
                   );
