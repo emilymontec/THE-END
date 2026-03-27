@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
     }
 
     await db.query('COMMIT');
-    res.status(21).json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     await db.query('ROLLBACK');
     res.status(400).json({ error: err.message });

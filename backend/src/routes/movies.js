@@ -38,7 +38,7 @@ router.post('/', async (req, res) => {
       'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [titulo, genero, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa']
     );
-    res.status(21).json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
