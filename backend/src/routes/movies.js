@@ -32,11 +32,11 @@ router.get('/:id', async (req, res) => {
 
 // Crear una película
 router.post('/', async (req, res) => {
-  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado } = req.body;
+  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada } = req.body;
   try {
     const result = await db.query(
-      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa']
+      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [titulo, genero, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa', destacada || false]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -46,11 +46,11 @@ router.post('/', async (req, res) => {
 
 // Editar una película
 router.put('/:id', async (req, res) => {
-  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado } = req.body;
+  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada } = req.body;
   try {
     const result = await db.query(
-      'UPDATE peliculas SET titulo=$1, genero=$2, duracion=$3, clasificacion=$4, descripcion=$5, imagen_url=$6, estado=$7 WHERE id=$8 RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, req.params.id]
+      'UPDATE peliculas SET titulo=$1, genero=$2, duracion=$3, clasificacion=$4, descripcion=$5, imagen_url=$6, estado=$7, destacada=$8 WHERE id=$9 RETURNING *',
+      [titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Película no encontrada' });
     res.json(result.rows[0]);

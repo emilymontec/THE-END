@@ -98,4 +98,15 @@ router.post('/:id/lock-seats', async (req, res) => {
   }
 });
 
+// Eliminar una función
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await db.query('DELETE FROM funciones WHERE id = $1', [req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Función no encontrada' });
+    res.json({ message: 'Función eliminada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

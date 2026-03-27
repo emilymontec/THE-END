@@ -26,10 +26,11 @@ pool.connect(async (err, client, release) => {
   
   // Sincronizar tablas automáticamente al iniciar
   try {
-    const sqlPath = path.join(__dirname, '../../../entitys.sql');
-    if (fs.existsSync(sqlPath)) {
-      const sql = fs.readFileSync(sqlPath, 'utf8');
-      await client.query(sql);
+    /*
+    // const sqlPath = path.join(__dirname, '../../../entitys.sql');
+    // if (fs.existsSync(sqlPath)) {
+    //   const sql = fs.readFileSync(sqlPath, 'utf8');
+    //   await client.query(sql);
       
       // Añadir columna para bloqueo temporal si no existe
       await client.query(`
@@ -51,23 +52,23 @@ pool.connect(async (err, client, release) => {
       `);
 
       // Usuarios base (Admin y Operario inicial)
-      const userCount = await client.query('SELECT COUNT(*) FROM usuarios');
-      if (parseInt(userCount.rows[0].count) === 0) {
-        console.log('Insertando usuarios base...');
-        // Usar credenciales del administrador desde .env o valores por defecto
-        const adminUser = process.env.ADMIN_USERNAME || 'admin@cinema.com';
-        const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+      // const userCount = await client.query('SELECT COUNT(*) FROM usuarios');
+      // if (parseInt(userCount.rows[0].count) === 0) {
+      //   console.log('Insertando usuarios base...');
+      //   // Usar credenciales del administrador desde .env o valores por defecto
+      //   const adminUser = process.env.ADMIN_USERNAME;
+      //   const adminPass = process.env.ADMIN_PASSWORD;
         
-        await client.query(
-          "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
-          ['Administrador', adminUser, adminPass, 'admin']
-        );
-        await client.query(
-          "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
-          ['Taquilla 1', 'staff@cinema.com', 'staff123', 'operario']
-        );
-        console.log(`Usuario base '${adminUser}' creado.`);
-      }
+      //   await client.query(
+      //     "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
+      //     ['Administrador', adminUser, adminPass, 'admin']
+      //   );
+      //   await client.query(
+      //     "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
+      //     ['Taquilla 1', 'staff@cinema.com', 'staff123', 'operario']
+      //   );
+      //   console.log(`Usuario base '${adminUser}' creado.`);
+      // }
 
       // Añadir columna para origen de venta si no existe
       await client.query(`
@@ -76,39 +77,20 @@ pool.connect(async (err, client, release) => {
         ADD COLUMN IF NOT EXISTS fecha_uso TIMESTAMP;
       `);
       
-      console.log('✅ Tablas sincronizadas con Nhost (entitys.sql)');
-      
-      // Opcional: Insertar asientos base si no hay
-      const seatCount = await client.query('SELECT COUNT(*) FROM asientos');
-      if (parseInt(seatCount.rows[0].count) === 0) {
-        console.log('Insertando asientos base...');
-        const filas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-        for (let f of filas) {
-          for (let c = 1; c <= 15; c++) {
-            await client.query('INSERT INTO asientos(numero, fila, columna) VALUES($1, $2, $3)', [(filas.indexOf(f) * 15) + c, f, c]);
-          }
-        }
-        console.log('150 asientos creados.');
-      }
+      console.log('Tablas sincronizadas');
 
-      // Películas con Posters Reales
-      const movieCount = await client.query('SELECT COUNT(*) FROM peliculas');
-      if (parseInt(movieCount.rows[0].count) === 0) {
-        console.log('Insertando películas base...');
-        const movies = [
-          ['Oppenheimer', 'Historia de J. Robert Oppenheimer y la bomba atómica.', 180, 'Drama', 'R', 'https://www.universalpictures.com.mx/tl_files/content/movies/oppenheimer/posters/oppenheimer_poster_universal.jpg', 'activa'],
-          ['Spider-Man: No Way Home', 'Peter Parker busca la ayuda de Doctor Strange.', 148, 'Acción', 'PG-13', 'https://m.media-amazon.com/images/M/MV5BMmFiZGZjMmEtMTA0Ni00MzA2LTljMTYtZGI2MGJmZWYzZTQ2XkEyXkFqcGc@._V1_.jpg', 'activa'],
-          ['Super Mario Bros', 'Un fontanero viaja a través de un laberinto subterráneo.', 92, 'Animación', 'G', 'https://m.media-amazon.com/images/M/MV5BNGYyZGM5M2ItZDU0MS00NWIzLWE2NDMtYjBlZDI1MzVlZTkzXkEyXkFqcGc@._V1_.jpg', 'activa']
-        ];
-
-        for (const m of movies) {
-          await client.query(
-            'INSERT INTO peliculas(titulo, descripcion, duracion, genero, clasificacion, imagen_url, estado) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-            m
-          );
+    */
+    // Asegurar que haya asientos (son necesarios para el funcionamiento)
+    const seatCount = await client.query('SELECT COUNT(*) FROM asientos');
+    if (parseInt(seatCount.rows[0].count) === 0) {
+      console.log('Insertando 150 asientos base...');
+      const filas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O'];
+      for (let f of filas) {
+        for (let c = 1; c <= 10; c++) {
+          await client.query('INSERT INTO asientos(numero, fila, columna) VALUES($1, $2, $3)', [(filas.indexOf(f) * 10) + c, f, c]);
         }
-        console.log('Películas base creadas.');
       }
+      console.log('150 asientos creados (15x10).');
     }
   } catch (syncErr) {
     console.error('Error sincronizando tablas:', syncErr.message);

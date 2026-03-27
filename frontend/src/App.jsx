@@ -21,8 +21,10 @@ export default function App() {
   const [message, setMessage] = useState(null);
   const [showMovieModal, setShowMovieModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [movieForm, setMovieForm] = useState({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa' });
+  const [showShowtimeModal, setShowShowtimeModal] = useState(false);
+  const [movieForm, setMovieForm] = useState({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
   const [userForm, setUserForm] = useState({ nombre: '', email: '', password: '', rol: 'operario' });
+  const [showtimeForm, setShowtimeForm] = useState({ pelicula_id: '', sala: 'Sala 1', fecha: '', hora: '', precio: '12000' });
   const [stats, setStats] = useState(null);
   const [ticketCode, setTicketCode] = useState('');
   const [validationResult, setValidationResult] = useState(null);
@@ -34,10 +36,36 @@ export default function App() {
   const [isPaying, setIsPaying] = useState(false);
   const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmModal({ show: true, title, message, onConfirm: () => { onConfirm(); setConfirmModal({ ...confirmModal, show: false }); } });
+  };
 
   // Filtros
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('todos');
+  const [allShowtimes, setAllShowtimes] = useState([]);
+
+  const loadAllShowtimes = async () => {
+    try {
+      const res = await api.get('/showtimes');
+      setAllShowtimes(res.data);
+    } catch (err) {
+      console.error('Error cargando funciones:', err);
+    }
+  };
+
+  useEffect(() => {
+    // Ya se llama en el useEffect principal con role/page
+  }, [page]);
+
+  const getImageUrl = (url) => {
+    if (!url || url === '') return 'https://via.placeholder.com/400x600?text=SIN+POSTER';
+    if (url.startsWith('http')) return url;
+    // Si no empieza con http, asumimos que es una ruta relativa de uploads
+    return `http://localhost:4000/uploads/${url.split('/').pop()}`;
+  };
 
   const uniqueGenres = ['todos', ...new Set(movies.map(m => m.genero).filter(Boolean))];
   const filteredMovies = movies.filter(m => {
@@ -46,9 +74,20 @@ export default function App() {
     return matchesSearch && matchesGenre;
   });
 
-  useEffect(() => { loadMovies(); }, [role]);
-
   useEffect(() => {
+    if (role === 'admin') setPage('dashboard');
+    else if (role === 'operario') setPage('validar');
+    else setPage('movies');
+    
+    setSelectedMovie(null);
+    setSelectedShowtime(null);
+    setLastTicket(null);
+    setAdminTab('sales');
+  }, [user]); // Redirigir solo cuando el usuario cambia (login/logout)
+
+  useEffect(() => { 
+    loadMovies(); 
+    loadAllShowtimes(); // Cargar todas las funciones al inicio
     if (role === 'admin' || role === 'operario') {
       loadStats();
       loadAllSales();
@@ -58,17 +97,7 @@ export default function App() {
     if (role === 'cliente' && user) {
       loadMyPurchases();
     }
-    
-    // Redirigir según el rol al cambiar de sesión
-    if (role === 'admin') setPage('dashboard');
-    else if (role === 'operario') setPage('validar');
-    else setPage('movies');
-
-    setSelectedMovie(null);
-    setSelectedShowtime(null);
-    setLastTicket(null);
-    setAdminTab('sales');
-  }, [role]);
+  }, [role, page]); // Refrescar cuando el rol o la página cambian
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -78,9 +107,9 @@ export default function App() {
       setUser(res.data);
       setRole(res.data.rol);
       localStorage.setItem('user', JSON.stringify(res.data));
-      showMsg('success', `WELCOME ${res.data.nombre.toUpperCase()}`);
+      showMsg('success', `BIENVENIDO ${res.data.nombre.toUpperCase()}`);
     } catch (err) {
-      showMsg('error', 'INVALID CREDENTIALS');
+      showMsg('error', 'CREDENCIALES INVÁLIDAS');
     } finally { setIsLoading(false); }
   };
 
@@ -92,19 +121,20 @@ export default function App() {
       setUser(res.data);
       setRole(res.data.rol);
       localStorage.setItem('user', JSON.stringify(res.data));
-      showMsg('success', 'ACCOUNT CREATED');
+      showMsg('success', 'CUENTA CREADA');
     } catch (err) {
-      showMsg('error', 'EMAIL ALREADY REGISTERED');
+      showMsg('error', 'EL EMAIL YA ESTÁ REGISTRADO');
     } finally { setIsLoading(false); }
   };
 
   const handleLogout = () => {
-    if (!window.confirm('¿CERRAR SESIÓN?')) return;
-    setUser(null);
-    setRole('guest');
-    localStorage.removeItem('user');
-    setPage('movies');
-    showMsg('success', 'LOGGED OUT');
+    showConfirm('CERRAR SESIÓN', '¿ESTÁ SEGURO DE SALIR DEL CINE?', () => {
+      setUser(null);
+      setRole('guest');
+      localStorage.removeItem('user');
+      setPage('movies');
+      showMsg('success', 'SESIÓN CERRADA');
+    });
   };
 
   const loadAllUsers = async () => {
@@ -127,23 +157,24 @@ export default function App() {
     setIsLoading(true);
     try {
       await api.post('/users/admin/users', userForm);
-      showMsg('success', 'USER CREATED');
+      showMsg('success', 'USUARIO CREADO');
       setShowUserModal(false);
       setUserForm({ nombre: '', email: '', password: '', rol: 'operario' });
       loadAllUsers();
-    } catch (err) { showMsg('error', 'SAVE ERROR'); }
+    } catch (err) { showMsg('error', 'ERROR AL GUARDAR'); }
     finally { setIsLoading(false); }
   };
 
   const handleDeleteUser = async (id) => {
-    if (!window.confirm('DELETE USER?')) return;
-    setIsLoading(true);
-    try {
-      await api.delete(`/users/admin/users/${id}`);
-      showMsg('success', 'USER DELETED');
-      loadAllUsers();
-    } catch (err) { showMsg('error', 'DELETE ERROR'); }
-    finally { setIsLoading(false); }
+    showConfirm('ELIMINAR USUARIO', '¿ESTÁ SEGURO DE ELIMINAR ESTE REGISTRO DE PERSONAL?', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/users/admin/users/${id}`);
+        showMsg('success', 'USUARIO ELIMINADO');
+        loadAllUsers();
+      } catch (err) { showMsg('error', 'ERROR AL ELIMINAR'); }
+      finally { setIsLoading(false); }
+    });
   };
 
   // Auto-refresh stats/sales
@@ -184,7 +215,7 @@ export default function App() {
       const res = await api.get(`/movies?role=${role}`);
       setMovies(res.data);
     } catch (err) {
-      showMsg('error', 'CONNECTION ERROR');
+      showMsg('error', 'ERROR DE CONEXIÓN');
     } finally { setIsLoading(false); }
   };
 
@@ -219,16 +250,22 @@ export default function App() {
   };
 
   const handleSelectMovie = async (movie) => {
+    console.log('Película seleccionada para compra:', movie.titulo);
     setSelectedMovie(movie);
     setIsLoading(true);
     try {
       const res = await api.get('/showtimes');
       const filtered = res.data.filter(s => s.pelicula_id === movie.id);
+      console.log('Funciones encontradas:', filtered.length);
       setShowtimes(filtered);
-      setPage('showtimes');
+      if (filtered.length > 0) {
+        setPage('showtimes');
+      } else {
+        showMsg('error', 'ESTA PELÍCULA NO TIENE FUNCIONES DISPONIBLES AÚN');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      showMsg('error', 'DATA ERROR');
+      showMsg('error', 'ERROR AL CARGAR HORARIOS');
     } finally { setIsLoading(false); }
   };
 
@@ -242,12 +279,13 @@ export default function App() {
       setPage('seats');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      showMsg('error', 'SEAT ERROR');
+      showMsg('error', 'ERROR DE ASIENTOS');
     } finally { setIsLoading(false); }
   };
 
   const toggleSeat = async (seatId) => {
     if (role === 'admin') return; // Admin solo observa
+    if (!selectedShowtime) return;
     if (selectedSeats.includes(seatId)) {
       setSelectedSeats(prev => prev.filter(id => id !== seatId));
       return;
@@ -264,17 +302,21 @@ export default function App() {
   };
 
   const handleProcessPayment = () => {
-    if (!window.confirm(`¿PROCEDER CON LA COMPRA DE ${selectedSeats.length} ASIENTO(S)? TOTAL: $${(selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString()}`)) {
-      return;
-    }
-    setIsPaying(true);
-    setTimeout(() => {
-      handleBuyTickets();
-      setIsPaying(false);
-    }, 2000);
+    showConfirm('CONFIRMAR COMPRA', `¿PROCEDER CON LA COMPRA DE ${selectedSeats.length} ASIENTO(S)? TOTAL: $${(selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString()}`, () => {
+      setIsPaying(true);
+      setTimeout(() => {
+        handleBuyTickets();
+        setIsPaying(false);
+      }, 2000);
+    });
   };
 
   const handleBuyTickets = async () => {
+    if (!selectedMovie || !selectedShowtime) {
+      showMsg('error', 'SESIÓN EXPIRADA, POR FAVOR REINICIE EL PROCESO');
+      setPage('movies');
+      return;
+    }
     setIsLoading(true);
     try {
       const res = await api.post('/tickets', {
@@ -291,6 +333,12 @@ export default function App() {
       });
       showMsg('success', 'COMPRA COMPLETADA');
       setPage('confirmation');
+      
+      // Auto-descargar PDF después de un pequeño retraso para asegurar que el DOM esté listo
+      setTimeout(() => {
+        downloadTicketPDF();
+      }, 1000);
+
       if (role === 'admin') loadStats();
       if (role === 'cliente') loadMyPurchases();
     } catch (err) { showMsg('error', 'ERROR EN COMPRA'); }
@@ -298,16 +346,17 @@ export default function App() {
   };
 
   const handleCancelTicket = async (id) => {
-    if (!window.confirm('¿CANCELAR TIQUETE Y LIBERAR ASIENTOS?')) return;
-    setIsLoading(true);
-    try {
-      await api.delete(`/tickets/${id}`);
-      showMsg('success', 'CANCELADO');
-      loadAllSales();
-      loadStats();
-      if (role === 'cliente') loadMyPurchases();
-    } catch (err) { showMsg('error', 'ERROR AL CANCELAR'); }
-    finally { setIsLoading(false); }
+    showConfirm('CANCELAR TIQUETE', '¿ESTÁ SEGURO DE CANCELAR EL TIQUETE Y LIBERAR LOS ASIENTOS?', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/tickets/${id}`);
+        showMsg('success', 'TIQUETE CANCELADO');
+        loadAllSales();
+        loadStats();
+        if (role === 'cliente') loadMyPurchases();
+      } catch (err) { showMsg('error', 'ERROR AL CANCELAR'); }
+      finally { setIsLoading(false); }
+    });
   };
 
   const handleValidateTicket = async () => {
@@ -315,22 +364,29 @@ export default function App() {
     setValidationResult(null);
     setIsLoading(true);
     try {
+      console.log('Validando ticket:', ticketCode);
       const res = await api.get(`/tickets/validate/${ticketCode}`);
       setValidationResult(res.data);
     } catch (err) {
-      setValidationResult({ status: 'INVALID', message: 'NOT FOUND' });
+      console.error('Error validando ticket:', err);
+      setValidationResult({ status: 'INVÁLIDO', message: 'NO ENCONTRADO' });
     } finally { setIsLoading(false); }
   };
 
   const handleUseTicket = async () => {
+    if (!ticketCode) return;
     setIsLoading(true);
     try {
+      console.log('Usando ticket:', ticketCode);
       await api.post(`/tickets/use/${ticketCode}`);
-      showMsg('success', 'VALIDATED');
-      handleValidateTicket();
+      showMsg('success', 'VALIDADO');
+      // No llamar a handleValidateTicket directamente si causa problemas, mejor actualizar estado local o recargar
+      const res = await api.get(`/tickets/validate/${ticketCode}`);
+      setValidationResult(res.data);
       if (role === 'admin') loadStats();
     } catch (err) {
-      showMsg('error', 'VALIDATION ERROR');
+      console.error('Error usando ticket:', err);
+      showMsg('error', 'ERROR DE VALIDACIÓN');
     } finally { setIsLoading(false); }
   };
 
@@ -338,39 +394,102 @@ export default function App() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (movieForm.id) await api.put(`/movies/${movieForm.id}`, movieForm);
-      else await api.post('/movies', movieForm);
-      showMsg('success', 'SAVED');
+      const movieData = { ...movieForm };
+      const fileInput = document.getElementById('movie-image-upload');
+
+      if (!movieData.imagen_url && (!fileInput || !fileInput.files || !fileInput.files[0])) {
+        showMsg('error', 'Debe proporcionar una URL de póster o adjuntar una imagen.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Handle file upload if present
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        try {
+          const uploadRes = await api.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          movieData.imagen_url = uploadRes.data.imageUrl;
+        } catch (uploadErr) {
+          console.error('Error subiendo imagen:', uploadErr);
+          showMsg('error', 'Error al subir la imagen. Por favor, intente de nuevo.');
+          setIsLoading(false);
+          return; // Detener la ejecución si la carga de la imagen falla
+        }
+      }
+
+      console.log('Guardando película:', movieData);
+      if (movieData.id) {
+        await api.put(`/movies/${movieData.id}`, movieData);
+      } else {
+        await api.post('/movies', movieData);
+      }
+      
+      showMsg('success', 'PELÍCULA GUARDADA CORRECTAMENTE');
       setShowMovieModal(false);
-      setMovieForm({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa' });
+      setMovieForm({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
       loadMovies();
     } catch (err) {
-      showMsg('error', 'SAVE ERROR');
+      console.error('Error al guardar película:', err);
+      showMsg('error', `ERROR AL GUARDAR: ${err.response?.data?.error || err.message}`);
     } finally { setIsLoading(false); }
   };
 
   const handleDeleteMovie = async (id) => {
-    if (!window.confirm('DELETE?')) return;
-    setIsLoading(true);
-    try {
-      await api.delete(`/movies/${id}`);
-      showMsg('success', 'DELETED');
-      loadMovies();
-    } catch (err) {
-      showMsg('error', 'DELETE ERROR');
-    } finally { setIsLoading(false); }
+    if (!id) return;
+    showConfirm('ELIMINAR PELÍCULA', '¿ESTÁ SEGURO DE ELIMINAR ESTA PELÍCULA? ESTA ACCIÓN NO SE PUEDE DESHACER.', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/movies/${id}`);
+        showMsg('success', 'PELÍCULA ELIMINADA');
+        loadMovies();
+      } catch (err) {
+        console.error('Error al eliminar película:', err);
+        showMsg('error', `ERROR AL ELIMINAR: ${err.response?.data?.error || err.message}`);
+      } finally { setIsLoading(false); }
+    });
   };
 
   const toggleMovieStatus = async (movie) => {
+    if (!movie || !movie.id) return;
     const nextStatus = movie.estado === 'activa' ? 'inactiva' : 'activa';
     setIsLoading(true);
     try {
       await api.patch(`/movies/${movie.id}/status`, { estado: nextStatus });
-      showMsg('success', `MOVIE ${nextStatus.toUpperCase()}`);
+      showMsg('success', `PELÍCULA ${nextStatus.toUpperCase()}`);
       loadMovies();
     } catch (err) {
-      showMsg('error', 'STATUS ERROR');
+      console.error('Error al cambiar estado:', err);
+      showMsg('error', `ERROR AL CAMBIAR ESTADO: ${err.response?.data?.error || err.message}`);
     } finally { setIsLoading(false); }
+  };
+
+  const handleSaveShowtime = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await api.post('/showtimes', showtimeForm);
+      showMsg('success', 'HORARIO AGREGADO');
+      setShowShowtimeModal(false);
+      setShowtimeForm({ pelicula_id: '', sala: 'Sala 1', fecha: '', hora: '', precio: '12000' });
+      loadAllShowtimes();
+    } catch (err) {
+      showMsg('error', 'ERROR AL GUARDAR HORARIO');
+    } finally { setIsLoading(false); }
+  };
+
+  const handleDeleteShowtime = async (id) => {
+    showConfirm('ELIMINAR HORARIO', '¿ESTÁ SEGURO DE ELIMINAR ESTA FUNCIÓN?', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/showtimes/${id}`);
+        showMsg('success', 'HORARIO ELIMINADO');
+        loadAllShowtimes();
+      } catch (err) { showMsg('error', 'ERROR AL ELIMINAR'); }
+      finally { setIsLoading(false); }
+    });
   };
 
   const downloadTicketPDF = async () => {
@@ -387,9 +506,9 @@ export default function App() {
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Ticket_${lastTicket.codigo}.pdf`);
-      showMsg('success', 'PDF DOWNLOADED');
+      showMsg('success', 'PDF DESCARGADO');
     } catch (err) {
-      showMsg('error', 'PDF ERROR');
+      showMsg('error', 'ERROR DE PDF');
     } finally { setIsLoading(false); }
   };
 
@@ -404,7 +523,6 @@ export default function App() {
         </div>
         <nav className="nav-links">
           <span className={page === 'movies' ? 'active' : ''} onClick={() => setPage('movies')}>Cartelera</span>
-          <span className={page === 'showtimes' ? 'active' : ''} onClick={() => setPage('movies')}>Funciones</span>
           {user && role === 'cliente' && (
             <span className={page === 'my-purchases' ? 'active' : ''} onClick={() => setPage('my-purchases')}>Mis Compras</span>
           )}
@@ -412,7 +530,7 @@ export default function App() {
             <span className={page === 'dashboard' || page === 'validar' ? 'active' : ''} onClick={() => setPage(role === 'admin' ? 'dashboard' : 'validar')}>Administración</span>
           )}
           {!user ? (
-            <button className="btn-login" onClick={() => setPage('auth')}>ACCEDER</button>
+            <button className="btn-marquee" style={{width:'auto', padding:'10px 20px', fontSize:'0.7rem'}} onClick={() => setPage('auth')}>ACCEDER</button>
           ) : (
             <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
               <span className="admit-one" style={{fontSize:'0.7rem', opacity: 0.6}}>{user.rol.toUpperCase()}</span>
@@ -442,18 +560,18 @@ export default function App() {
           {page === 'auth' && (
             <div className="gold-frame" style={{maxWidth:'450px', margin:'60px auto', background:'white', padding:'40px'}}>
               <div style={{textAlign:'center', marginBottom:'32px'}}>
-                <span className="pre-title">Box Office</span>
-                <h3 className="movie-meta-title" style={{fontSize:'2rem'}}>{authMode === 'login' ? 'LOGIN' : 'REGISTER'}</h3>
+                <span className="pre-title">Taquilla</span>
+                <h3 className="movie-meta-title" style={{fontSize:'2rem'}}>{authMode === 'login' ? 'INICIAR SESIÓN' : 'REGISTRARSE'}</h3>
               </div>
               <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{display:'flex', flexDirection:'column', gap:'20px'}}>
                 {authMode === 'register' && (
-                  <input placeholder="NAME" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} />
+                  <input placeholder="NOMBRE" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} />
                 )}
-                <input type="text" placeholder="USERNAME / EMAIL" required value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
-                <input type="password" placeholder="PASSWORD" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
-                <button type="submit" className="btn-marquee" style={{marginTop:'10px'}}>{authMode === 'login' ? 'ENTER THEATER' : 'CREATE ACCOUNT'}</button>
+                <input type="text" placeholder="USUARIO / EMAIL" required value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
+                <input type="password" placeholder="CONTRASEÑA" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                <button type="submit" className="btn-marquee" style={{marginTop:'10px'}}>{authMode === 'login' ? 'ENTRAR AL CINE' : 'CREAR CUENTA'}</button>
                 <button type="button" style={{background:'transparent', border:'none', color:'var(--secondary)', cursor:'pointer', fontStyle:'italic'}} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
-                  {authMode === 'login' ? 'Need an account? Register' : 'Already registered? Login'}
+                  {authMode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
                 </button>
               </form>
             </div>
@@ -462,52 +580,103 @@ export default function App() {
           {/* MOVIES LIST (Bento Grid) */}
           {page === 'movies' && (
             <div className="movie-grid">
-              {movies.length > 0 && (
-                <>
-                  {/* Featured Movie (The first one) */}
-                  <article className="featured-movie">
-                    <div className="gold-frame">
-                      <div className="featured-poster-container">
-                        <img src={movies[0].imagen_url} alt={movies[0].titulo} className="featured-poster" />
-                        <div className="featured-overlay">
-                          <span className="featured-badge">Featured Presentation</span>
-                          <h2 className="featured-title">{movies[0].titulo}</h2>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="movie-meta" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'24px'}}>
-                      <div style={{flex:1}}>
-                        <div className="movie-header">
-                          <div className="rating-box">{movies[0].clasificacion || 'A'}</div>
-                          <span className="movie-sub-meta">{movies[0].genero} • {movies[0].duracion} MIN</span>
-                        </div>
-                        <p className="movie-summary">{movies[0].descripcion}</p>
-                      </div>
-                      <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(movies[0])}>VER FUNCIONES</button>
-                    </div>
-                  </article>
-
-                  {/* Secondary Movies Section */}
-                  <div className="secondary-grid" style={{gridColumn: 'span 12', marginTop: '40px'}}>
-                    {movies.slice(1).map(m => (
-                      <article key={m.id} className="secondary-movie-item">
-                        <div className="poster-frame">
-                          <div className="secondary-poster-container">
-                            <img src={m.imagen_url} alt={m.titulo} className="secondary-poster" />
+              {movies.length > 0 ? (
+                (() => {
+                  const featuredMovie = movies.find(m => m.destacada && m.estado === 'activa') || movies[0];
+                  const secondaryMovies = movies.filter(m => m.id !== featuredMovie.id);
+                  
+                  return (
+                    <>
+                      {/* Featured Movie */}
+                      <article className="featured-movie">
+                        <div className="gold-frame">
+                          <div className="featured-poster-container">
+                            <img src={getImageUrl(featuredMovie.imagen_url)} alt={featuredMovie.titulo} className="featured-poster" />
+                            <div className="featured-overlay">
+                              <span className="featured-badge">Presentación Estelar</span>
+                              <h2 className="featured-title">{featuredMovie.titulo}</h2>
+                            </div>
                           </div>
                         </div>
-                        <div className="movie-meta">
-                          <div className="movie-header">
-                            <div className="rating-box" style={{width:'30px', height:'30px', fontSize:'0.7rem'}}>{m.clasificacion || 'B'}</div>
-                            <h3 className="movie-meta-title" style={{fontSize:'1.2rem'}}>{m.titulo}</h3>
+                        <div className="movie-meta" style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'24px'}}>
+                          <div style={{flex:1}}>
+                            <div className="movie-header">
+                              <div className="rating-box">{featuredMovie.clasificacion || 'A'}</div>
+                              <span className="movie-sub-meta">{featuredMovie.genero} • {featuredMovie.duracion} MIN</span>
+                            </div>
+                            <p className="movie-summary">{featuredMovie.descripcion}</p>
+                            
+                            {/* Horarios y Disponibilidad */}
+                            <div style={{marginTop:'16px'}}>
+                              <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>Horarios Disponibles:</span>
+                              <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).slice(0, 4).map(s => (
+                                  <span key={s.id} className="featured-badge" style={{background:'var(--secondary)', margin:0, fontSize:'0.6rem'}}>
+                                    {s.hora.slice(0,5)}
+                                  </span>
+                                ))}
+                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length === 0 && (
+                                  <span className="movie-sub-meta" style={{color:'#999'}}>Próximamente</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <p className="movie-sub-meta">{m.genero} • {m.duracion} MIN</p>
-                          <button className="btn-marquee" style={{marginTop:'16px', padding:'10px'}} onClick={() => handleSelectMovie(m)}>COMPRAR</button>
+                          <div style={{display:'flex', flexDirection:'column', gap:'12px', alignItems:'flex-end'}}>
+                            <div className="rating-box" style={{width:'auto', padding:'0 10px', height:'30px', fontSize:'0.7rem', borderColor:'var(--primary)', color:'var(--primary)'}}>
+                              {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? 'DISPONIBLE' : 'AGOTADO'}
+                            </div>
+                            <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>COMPRAR BOLETA</button>
+                          </div>
                         </div>
                       </article>
-                    ))}
-                  </div>
-                </>
+
+                      {/* Secondary Movies Section */}
+                      <div className="secondary-grid" style={{gridColumn: 'span 12', marginTop: '40px'}}>
+                        {secondaryMovies.map(m => (
+                          <article key={m.id} className="secondary-movie-item" style={{display:'flex', flexDirection:'column'}}>
+                            <div className="poster-frame" style={{flex:1, display:'flex', flexDirection:'column'}}>
+                              <div className="secondary-poster-container" style={{flex:1}}>
+                                <img src={getImageUrl(m.imagen_url)} alt={m.titulo} className="secondary-poster" />
+                              </div>
+                            </div>
+                            <div className="movie-meta" style={{minHeight:'220px', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+                              <div>
+                                <div className="movie-header">
+                                  <div className="rating-box" style={{width:'30px', height:'30px', fontSize:'0.7rem'}}>{m.clasificacion || 'B'}</div>
+                                  <h3 className="movie-meta-title" style={{fontSize:'1.2rem'}}>{m.titulo}</h3>
+                                </div>
+                                <p className="movie-sub-meta">{m.genero} • {m.duracion} MIN</p>
+                                
+                                {/* Horarios Cortos */}
+                                <div style={{marginTop:'12px'}}>
+                                  <div style={{display:'flex', gap:'4px', flexWrap:'wrap'}}>
+                                    {allShowtimes.filter(s => s.pelicula_id === m.id).slice(0, 3).map(s => (
+                                      <span key={s.id} style={{fontSize:'0.6rem', padding:'2px 6px', border:'1px solid var(--secondary)', color:'var(--secondary)', fontWeight:'700'}}>
+                                        {s.hora.slice(0,5)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{marginTop:'16px'}}>
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                                  <span className="admit-one" style={{fontSize:'0.5rem'}}>
+                                    {allShowtimes.filter(s => s.pelicula_id === m.id).length > 0 ? 'EN CARTELERA' : 'PRÓXIMAMENTE'}
+                                  </span>
+                                </div>
+                                <button className="btn-marquee" style={{padding:'10px'}} onClick={() => handleSelectMovie(m)}>COMPRAR BOLETA</button>
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()
+              ) : (
+                <div style={{gridColumn:'span 12', textAlign:'center', padding:'80px', background:'white'}} className="gold-frame">
+                   <p className="movie-summary">No hay películas disponibles en este momento.</p>
+                </div>
               )}
             </div>
           )}
@@ -515,11 +684,11 @@ export default function App() {
           {/* SHOWTIMES */}
           {page === 'showtimes' && (
             <div className="gold-frame" style={{marginTop:'40px', background:'white', padding:'48px'}}>
-              <span className="pre-title">Schedule</span>
+              <span className="pre-title">Horarios</span>
               <h2 className="main-title" style={{fontSize:'3rem', textAlign:'left', marginBottom:'40px'}}>{selectedMovie.titulo}</h2>
               <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:'48px'}}>
                 <div className="poster-frame">
-                  <img src={selectedMovie.imagen_url} alt={selectedMovie.titulo} style={{width:'100%', aspectRatio:'2/3', objectFit:'cover'}} />
+                  <img src={getImageUrl(selectedMovie.imagen_url)} alt={selectedMovie.titulo} style={{width:'100%', aspectRatio:'2/3', objectFit:'cover'}} />
                 </div>
                 <div>
                   <p className="movie-summary" style={{fontSize:'1.5rem', marginBottom:'32px'}}>{selectedMovie.descripcion}</p>
@@ -532,7 +701,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <button className="btn-marquee" style={{marginTop:'40px', width:'200px'}} onClick={() => setPage('movies')}>BACK</button>
+                  <button className="btn-marquee" style={{marginTop:'40px', width:'200px'}} onClick={() => setPage('movies')}>VOLVER</button>
                 </div>
               </div>
             </div>
@@ -545,7 +714,7 @@ export default function App() {
                 <div className="architect-grid-pattern"></div>
                 <div className="screen-indicator">
                   <div className="screen-line"></div>
-                  <span className="screen-text">Projection Surface</span>
+                  <span className="screen-text">Superficie de Proyección</span>
                 </div>
                 <div className="seats-grid-stitch">
                   {seats.map(seat => (
@@ -563,33 +732,33 @@ export default function App() {
               <aside className="ticket-panel">
                 <div className="stitch-ticket">
                   <div className="ticket-header-stitch">
-                    <span className="admit-one">ADMIT ONE</span>
-                    <span className="movie-sub-meta">#MARQUEE-2026</span>
+                    <span className="admit-one">ADMITIR UNO</span>
+                    <span className="movie-sub-meta">#MARQUESINA-2026</span>
                   </div>
                   <div style={{marginTop:'24px'}}>
-                    <span className="pre-title" style={{fontSize:'0.6rem'}}>Presentation</span>
+                    <span className="pre-title" style={{fontSize:'0.6rem'}}>Presentación</span>
                     <p className="movie-meta-title" style={{fontSize:'1.2rem'}}>{selectedMovie.titulo}</p>
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginTop:'16px'}}>
                       <div>
-                        <span className="pre-title" style={{fontSize:'0.6rem'}}>Date</span>
+                        <span className="pre-title" style={{fontSize:'0.6rem'}}>Fecha</span>
                         <p className="movie-sub-meta" style={{fontSize:'0.8rem', color:'black'}}>{selectedShowtime.fecha}</p>
                       </div>
                       <div>
-                        <span className="pre-title" style={{fontSize:'0.6rem'}}>Time</span>
+                        <span className="pre-title" style={{fontSize:'0.6rem'}}>Hora</span>
                         <p className="movie-sub-meta" style={{fontSize:'0.8rem', color:'black'}}>{selectedShowtime.hora}</p>
                       </div>
                     </div>
                     <div style={{marginTop:'24px', padding:'16px', border:'1px dashed var(--secondary)', textAlign:'center'}}>
-                      <span className="pre-title" style={{fontSize:'0.6rem'}}>Seats Selected</span>
+                      <span className="pre-title" style={{fontSize:'0.6rem'}}>Asientos Seleccionados</span>
                       <p className="main-title" style={{fontSize:'1.5rem', margin:'8px 0'}}>{selectedSeats.length > 0 ? selectedSeats.length : '0'}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="gold-frame" style={{background:'var(--surface-container-high)', border:'none'}}>
-                  <h3 className="admit-one" style={{borderBottom:'1px solid rgba(0,0,0,0.1)', paddingBottom:'12px', marginBottom:'16px'}}>Summary</h3>
+                  <h3 className="admit-one" style={{borderBottom:'1px solid rgba(0,0,0,0.1)', paddingBottom:'12px', marginBottom:'16px'}}>Resumen</h3>
                   <div style={{display:'flex', justifyContent:'space-between', marginBottom:'8px'}}>
-                    <span className="movie-sub-meta">Tickets x{selectedSeats.length}</span>
+                    <span className="movie-sub-meta">Tiquetes x{selectedSeats.length}</span>
                     <span className="movie-meta-title" style={{fontSize:'1rem'}}>${(selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString()}</span>
                   </div>
                   <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px solid rgba(0,0,0,0.1)', paddingTop:'12px', marginTop:'12px'}}>
@@ -597,7 +766,7 @@ export default function App() {
                     <span className="movie-meta-title" style={{fontSize:'1.5rem'}}>${(selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString()}</span>
                   </div>
                   <button className="btn-marquee" style={{marginTop:'24px'}} disabled={selectedSeats.length === 0} onClick={handleProcessPayment}>
-                    {isPaying ? 'PROCESSING...' : 'CONFIRM PURCHASE'}
+                    {isPaying ? 'PROCESANDO...' : 'CONFIRMAR COMPRA'}
                   </button>
                 </div>
               </aside>
@@ -653,13 +822,13 @@ export default function App() {
                 <h2 className="main-title" style={{fontSize:'2rem', marginTop:'24px'}}>#{lastTicket.codigo}</h2>
               </div>
               <div style={{borderTop:'1px solid #eee', paddingTop:'24px'}}>
-                <p className="movie-sub-meta">Film: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.movie}</span></p>
-                <p className="movie-sub-meta">Time: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.time}</span></p>
-                <p className="movie-sub-meta">Seats: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.seats}</span></p>
+                <p className="movie-sub-meta">Película: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.movie}</span></p>
+                <p className="movie-sub-meta">Horario: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.time}</span></p>
+                <p className="movie-sub-meta">Asientos: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.seats}</span></p>
                 <p className="movie-sub-meta" style={{fontSize:'1.2rem', marginTop:'16px'}}>Total: <span style={{color:'var(--primary)', fontStyle:'normal', fontWeight:'900'}}>${parseFloat(lastTicket.total).toLocaleString()}</span></p>
               </div>
               <div style={{display:'flex', gap:'16px', marginTop:'32px'}}>
-                <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={() => setPage('movies')}>HOME</button>
+                <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={() => setPage('movies')}>INICIO</button>
                 <button className="btn-marquee" style={{flex:1, padding:'12px', background:'var(--secondary)'}} onClick={downloadTicketPDF}>PDF</button>
               </div>
             </div>
@@ -670,7 +839,7 @@ export default function App() {
             <div className="movie-grid" style={{marginTop:'40px'}}>
               <aside className="secondary-movie" style={{gridColumn:'span 3'}}>
                 <div className="gold-frame" style={{background:'var(--surface-container-high)', border:'none', padding:'24px'}}>
-                  <h2 className="admit-one" style={{marginBottom:'24px'}}>Management</h2>
+                  <h2 className="admit-one" style={{marginBottom:'24px'}}>Gestión</h2>
                   <nav style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                     {role === 'admin' && (
                       <>
@@ -679,7 +848,9 @@ export default function App() {
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='users' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('users')}>Personal</button>
                       </>
                     )}
-                    <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background:'var(--secondary)'}} onClick={() => setPage('validar')}>Ticket Scanner</button>
+                    {role === 'operario' && (
+                      <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background:'var(--secondary)'}} onClick={() => setPage('validar')}>Escáner de Tickets</button>
+                    )}
                   </nav>
                 </div>
               </aside>
@@ -687,18 +858,18 @@ export default function App() {
               <main style={{gridColumn:'span 9'}}>
                 {page === 'validar' ? (
                   <div className="gold-frame" style={{background:'white', padding:'48px', textAlign:'center'}}>
-                    <span className="pre-title">Security Check</span>
-                    <h3 className="main-title" style={{fontSize:'2rem'}}>Validate Ticket</h3>
-                    <input placeholder="ENTER 8-DIGIT SERIAL" value={ticketCode} onChange={e => setTicketCode(e.target.value.toUpperCase())} style={{fontSize:'2rem', textAlign:'center', letterSpacing:'8px', width:'100%', marginBottom:'32px'}} />
-                    <button className="btn-marquee" onClick={handleValidateTicket}>SEARCH ARCHIVES</button>
+                    <span className="pre-title">Control de Seguridad</span>
+                    <h3 className="main-title" style={{fontSize:'2rem'}}>Validar Ticket</h3>
+                    <input placeholder="INGRESE SERIAL DE 8 DÍGITOS" value={ticketCode} onChange={e => setTicketCode(e.target.value.toUpperCase())} style={{fontSize:'2rem', textAlign:'center', letterSpacing:'8px', width:'100%', marginBottom:'32px'}} />
+                    <button className="btn-marquee" onClick={handleValidateTicket}>BUSCAR ARCHIVOS</button>
                     {validationResult && (
                       <div className="poster-frame" style={{marginTop:'32px', padding:'24px'}}>
-                        <p className="admit-one">Status: <span style={{color: validationResult.status === 'Válido' ? 'green' : 'red'}}>{validationResult.status}</span></p>
+                        <p className="admit-one">Estado: <span style={{color: validationResult.status === 'Válido' ? 'green' : 'red'}}>{validationResult.status}</span></p>
                         {validationResult.ticket && (
                           <div style={{marginTop:'16px'}}>
                             <p className="movie-meta-title">{validationResult.ticket.titulo}</p>
                             {validationResult.status === 'Válido' && (
-                              <button className="btn-marquee" style={{marginTop:'24px'}} onClick={handleUseTicket}>ADMIT CLIENT</button>
+                              <button className="btn-marquee" style={{marginTop:'24px'}} onClick={handleUseTicket}>ADMITIR CLIENTE</button>
                             )}
                           </div>
                         )}
@@ -710,25 +881,25 @@ export default function App() {
                     {adminTab === 'users' ? (
                       <div>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
-                          <h3 className="movie-meta-title">Staff Records</h3>
-                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => setShowUserModal(true)}>+ ADD STAFF</button>
+                          <h3 className="movie-meta-title">Registros de Personal</h3>
+                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => setShowUserModal(true)}>+ AGREGAR PERSONAL</button>
                         </div>
                         <table style={{width:'100%', borderCollapse:'collapse'}}>
                           <thead>
                             <tr style={{borderBottom:'2px solid var(--secondary)'}}>
-                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Name</th>
-                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Identity</th>
-                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Role</th>
-                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Action</th>
+                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Nombre</th>
+                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Identidad</th>
+                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Rol</th>
+                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Acción</th>
                             </tr>
                           </thead>
                           <tbody>
                             {allUsers.map(u => (
                               <tr key={u.id} style={{borderBottom:'1px solid #eee'}}>
-                                <td className="movie-sub-meta" style={{color:'black', padding:'12px'}}>{u.nombre}</td>
-                                <td className="movie-sub-meta" style={{color:'black', padding:'12px'}}>{u.email}</td>
+                                <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>{u.nombre}</td>
+                                <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>{u.email}</td>
                                 <td className="movie-sub-meta" style={{color:'black', padding:'12px'}}><span className="featured-badge" style={{margin:0}}>{u.rol}</span></td>
-                                <td style={{padding:'12px'}}>{u.email !== 'admin@cinema.com' && <button onClick={() => handleDeleteUser(u.id)} style={{color:'red', background:'none', border:'none', cursor:'pointer'}}>VOID</button>}</td>
+                                <td style={{padding:'12px'}}>{u.email !== 'admin@cinema.com' && <button onClick={() => handleDeleteUser(u.id)} style={{color:'red', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>ELIMINAR</button>}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -744,8 +915,8 @@ export default function App() {
                           <thead>
                             <tr style={{borderBottom:'2px solid var(--secondary)'}}>
                               <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Título</th>
-                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Género</th>
                               <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Estado</th>
+                              <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Funciones</th>
                               <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Acciones</th>
                             </tr>
                           </thead>
@@ -753,8 +924,18 @@ export default function App() {
                             {movies.map(m => (
                               <tr key={m.id} style={{borderBottom:'1px solid #eee'}}>
                                 <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>{m.titulo}</td>
-                                <td className="movie-sub-meta" style={{color:'black', padding:'12px'}}>{m.genero}</td>
                                 <td style={{padding:'12px'}}><span className="featured-badge" style={{margin:0, background: m.estado==='activa' ? 'var(--secondary)' : '#999'}}>{m.estado}</span></td>
+                                <td style={{padding:'12px'}}>
+                                  <div style={{display:'flex', gap:'4px', flexWrap:'wrap', maxWidth:'200px'}}>
+                                    {allShowtimes.filter(s => s.pelicula_id === m.id).map(s => (
+                                      <div key={s.id} style={{fontSize:'0.6rem', padding:'2px 4px', background:'var(--surface-container-high)', border:'1px solid #ccc', display:'flex', alignItems:'center', gap:'4px'}}>
+                                        {s.fecha} {s.hora.slice(0,5)}
+                                        <span onClick={() => handleDeleteShowtime(s.id)} style={{color:'red', cursor:'pointer', fontWeight:'bold'}}>×</span>
+                                      </div>
+                                    ))}
+                                    <button onClick={() => { setShowtimeForm({ ...showtimeForm, pelicula_id: m.id }); setShowShowtimeModal(true); }} style={{fontSize:'0.6rem', padding:'2px 6px', cursor:'pointer', background:'var(--primary)', color:'white', border:'none'}}>+ AGREGAR</button>
+                                  </div>
+                                </td>
                                 <td style={{padding:'12px', display:'flex', gap:'8px'}}>
                                   <button onClick={() => { setMovieForm({...m}); setShowMovieModal(true); }} style={{color:'var(--primary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>EDITAR</button>
                                   <button onClick={() => toggleMovieStatus(m)} style={{color:'var(--secondary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>{m.estado==='activa' ? 'DESACTIVAR' : 'ACTIVAR'}</button>
@@ -767,13 +948,13 @@ export default function App() {
                       </div>
                     ) : (
                       <div>
-                        <h3 className="movie-meta-title" style={{marginBottom:'32px'}}>Panel de Ventas</h3>
-                        <div className="movie-grid" style={{gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'16px'}}>
-                          <div className="poster-frame" style={{textAlign:'center'}}>
+                        <h3 className="movie-meta-title" style={{marginBottom:'32px', textAlign:'center'}}>Panel de Ventas</h3>
+                        <div className="movie-grid" style={{display:'flex', justifyContent:'center', gap:'16px', marginBottom:'40px'}}>
+                          <div className="poster-frame" style={{textAlign:'center', minWidth:'250px'}}>
                             <span className="admit-one">Ingresos Totales</span>
                             <p className="main-title" style={{fontSize:'2rem', margin:'8px 0'}}>${parseFloat(stats?.totalMoney || 0).toLocaleString()}</p>
                           </div>
-                          <div className="poster-frame" style={{textAlign:'center'}}>
+                          <div className="poster-frame" style={{textAlign:'center', minWidth:'250px'}}>
                             <span className="admit-one">Tiquetes Vendidos</span>
                             <p className="main-title" style={{fontSize:'2rem', margin:'8px 0'}}>{stats?.totalTickets || 0}</p>
                           </div>
@@ -821,26 +1002,33 @@ export default function App() {
         <div className="footer-credits">
           © 1945 THE END. Conservando la magia del séptimo arte desde la época dorada.
         </div>
-        <div style={{display:'flex', gap:'24px'}}>
-          <span className="admit-one" style={{fontSize:'0.6rem', opacity: 0.5}}>Archivos</span>
-          <span className="admit-one" style={{fontSize:'0.6rem', opacity: 0.5}}>Privacidad</span>
-          <span className="admit-one" style={{fontSize:'0.6rem', opacity: 0.5}}>Boletería</span>
-        </div>
       </footer>
 
       {/* MODALS */}
       {showMovieModal && (
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'500px', padding:'40px'}}>
-            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{movieForm.id ? 'UPDATE FILM' : 'REGISTER FILM'}</h3>
+            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{movieForm.id ? 'ACTUALIZAR PELÍCULA' : 'REGISTRAR PELÍCULA'}</h3>
             <form onSubmit={handleSaveMovie} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
-              <input placeholder="TITLE" required value={movieForm.titulo} onChange={e => setMovieForm({...movieForm, titulo: e.target.value})} />
-              <input placeholder="GENRE" required value={movieForm.genero} onChange={e => setMovieForm({...movieForm, genero: e.target.value})} />
-              <input placeholder="POSTER URL" value={movieForm.imagen_url} onChange={e => setMovieForm({...movieForm, imagen_url: e.target.value})} />
-              <textarea placeholder="SYNOPSIS" value={movieForm.descripcion} onChange={e => setMovieForm({...movieForm, descripcion: e.target.value})} rows="4" />
+              <input placeholder="TÍTULO" required value={movieForm.titulo} onChange={e => setMovieForm({...movieForm, titulo: e.target.value})} />
+              <input placeholder="GÉNERO" required value={movieForm.genero} onChange={e => setMovieForm({...movieForm, genero: e.target.value})} />
+              <div style={{display:'flex', gap:'16px'}}>
+                <input placeholder="DURACIÓN (MIN)" required type="number" value={movieForm.duracion} onChange={e => setMovieForm({...movieForm, duracion: e.target.value})} />
+                <input placeholder="CLASIFICACIÓN" required value={movieForm.clasificacion} onChange={e => setMovieForm({...movieForm, clasificacion: e.target.value})} />
+              </div>
+              <div style={{border:'1px dashed var(--secondary)', padding:'15px'}}>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>ADJUNTAR PÓSTER (OPCIONAL)</span>
+                <input type="file" id="movie-image-upload" accept="image/*" style={{border:'none', padding:0}} />
+              </div>
+              <input placeholder="O URL DEL PÓSTER" value={movieForm.imagen_url} onChange={e => setMovieForm({...movieForm, imagen_url: e.target.value})} />
+              <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px', background:'var(--surface-container-high)'}}>
+                <input type="checkbox" id="movie-destacada" checked={movieForm.destacada} onChange={e => setMovieForm({...movieForm, destacada: e.target.checked})} style={{width:'auto'}} />
+                <label htmlFor="movie-destacada" className="admit-one" style={{fontSize:'0.7rem', cursor:'pointer'}}>PELÍCULA DESTACADA (PÁGINA PRINCIPAL)</label>
+              </div>
+              <textarea placeholder="SINOPSIS" value={movieForm.descripcion} onChange={e => setMovieForm({...movieForm, descripcion: e.target.value})} rows="4" />
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
-                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowMovieModal(false)}>CANCEL</button>
-                <button type="submit" className="btn-marquee" style={{flex:1}}>COMMIT</button>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowMovieModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
               </div>
             </form>
           </div>
@@ -850,20 +1038,67 @@ export default function App() {
       {showUserModal && (
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'500px', padding:'40px'}}>
-            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>STAFF REGISTRATION</h3>
+            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>REGISTRO DE PERSONAL</h3>
             <form onSubmit={handleSaveUser} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
-              <input placeholder="NAME" required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} />
-              <input placeholder="IDENTITY / EMAIL" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
-              <input placeholder="SECURITY CODE" required type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
+              <input placeholder="NOMBRE" required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} />
+              <input placeholder="IDENTIDAD / EMAIL" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
+              <input placeholder="CÓDIGO DE SEGURIDAD" required type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
               <select value={userForm.rol} onChange={e => setUserForm({...userForm, rol: e.target.value})} style={{padding:'15px', border:'1px solid var(--accent)'}}>
-                <option value="operario">Operario (Staff)</option>
-                <option value="admin">Administrator</option>
+                <option value="operario">Operario (Personal)</option>
+                <option value="admin">Administrador</option>
               </select>
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
-                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowUserModal(false)}>CANCEL</button>
-                <button type="submit" className="btn-marquee" style={{flex:1}}>REGISTER</button>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowUserModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>REGISTRAR</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showShowtimeModal && (
+        <div className="modal-overlay">
+          <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'450px', padding:'40px'}}>
+            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>AGREGAR HORARIO</h3>
+            <form onSubmit={handleSaveShowtime} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>FECHA</span>
+                <input type="date" required value={showtimeForm.fecha} onChange={e => setShowtimeForm({...showtimeForm, fecha: e.target.value})} />
+              </div>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>HORA</span>
+                <input type="time" required value={showtimeForm.hora} onChange={e => setShowtimeForm({...showtimeForm, hora: e.target.value})} />
+              </div>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>SALA</span>
+                <select value={showtimeForm.sala} onChange={e => setShowtimeForm({...showtimeForm, sala: e.target.value})}>
+                  <option value="Sala 1">Sala 1 (Principal)</option>
+                  <option value="Sala 2">Sala 2 (VIP)</option>
+                  <option value="Sala 3">Sala 3 (3D)</option>
+                </select>
+              </div>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>PRECIO BOLETA</span>
+                <input type="number" required value={showtimeForm.precio} onChange={e => setShowtimeForm({...showtimeForm, precio: e.target.value})} />
+              </div>
+              <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowShowtimeModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {confirmModal.show && (
+        <div className="modal-overlay" style={{zIndex: 3000}}>
+          <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'400px', padding:'40px', textAlign:'center'}}>
+            <span className="pre-title" style={{fontSize:'0.6rem'}}>{confirmModal.title}</span>
+            <h3 className="movie-meta-title" style={{fontSize:'1.5rem', margin:'16px 0'}}>{confirmModal.message}</h3>
+            <div style={{display:'flex', gap:'16px', marginTop:'32px'}}>
+              <button className="btn-marquee" style={{background:'var(--secondary)', flex:1, padding:'12px'}} onClick={() => setConfirmModal({ ...confirmModal, show: false })}>CANCELAR</button>
+              <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={confirmModal.onConfirm}>CONFIRMAR</button>
+            </div>
           </div>
         </div>
       )}

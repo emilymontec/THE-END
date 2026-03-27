@@ -6,9 +6,6 @@ DROP TABLE IF EXISTS peliculas CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS asientos CASCADE;
 
--- =========================
--- TABLA: usuarios
--- =========================
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -18,9 +15,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
--- TABLA: peliculas
--- =========================
 CREATE TABLE IF NOT EXISTS peliculas (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(150) NOT NULL,
@@ -30,12 +24,10 @@ CREATE TABLE IF NOT EXISTS peliculas (
     clasificacion VARCHAR(10),
     imagen_url TEXT,
     trailer_url TEXT,
-    estado VARCHAR(20) CHECK (estado IN ('activa', 'inactiva')) DEFAULT 'activa'
+    estado VARCHAR(20) CHECK (estado IN ('activa', 'inactiva')) DEFAULT 'activa',
+    destacada BOOLEAN DEFAULT FALSE
 );
 
--- =========================
--- TABLA: funciones
--- =========================
 CREATE TABLE IF NOT EXISTS funciones (
     id SERIAL PRIMARY KEY,
     pelicula_id INT NOT NULL,
@@ -44,16 +36,9 @@ CREATE TABLE IF NOT EXISTS funciones (
     sala VARCHAR(20),
     precio NUMERIC(10,2) NOT NULL,
     estado VARCHAR(20) CHECK (estado IN ('disponible', 'cancelada')) DEFAULT 'disponible',
-
-    CONSTRAINT fk_pelicula
-        FOREIGN KEY (pelicula_id)
-        REFERENCES peliculas(id)
-        ON DELETE CASCADE
+    CONSTRAINT fk_pelicula FOREIGN KEY (pelicula_id) REFERENCES peliculas(id) ON DELETE CASCADE
 );
 
--- =========================
--- TABLA: asientos
--- =========================
 CREATE TABLE IF NOT EXISTS asientos (
     id SERIAL PRIMARY KEY,
     numero INT NOT NULL,
@@ -62,31 +47,17 @@ CREATE TABLE IF NOT EXISTS asientos (
     estado VARCHAR(20) CHECK (estado IN ('activo', 'inactivo')) DEFAULT 'activo'
 );
 
--- =========================
--- TABLA INTERMEDIA: funcion_asiento
--- =========================
 CREATE TABLE IF NOT EXISTS funcion_asiento (
     id SERIAL PRIMARY KEY,
     funcion_id INT NOT NULL,
     asiento_id INT NOT NULL,
     ocupado BOOLEAN DEFAULT FALSE,
-
-    CONSTRAINT fk_funcion_asiento_funcion
-        FOREIGN KEY (funcion_id)
-        REFERENCES funciones(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_funcion_asiento_asiento
-        FOREIGN KEY (asiento_id)
-        REFERENCES asientos(id)
-        ON DELETE CASCADE,
-
+    bloqueado_hasta TIMESTAMP,
+    CONSTRAINT fk_funcion_asiento_funcion FOREIGN KEY (funcion_id) REFERENCES funciones(id) ON DELETE CASCADE,
+    CONSTRAINT fk_funcion_asiento_asiento FOREIGN KEY (asiento_id) REFERENCES asientos(id) ON DELETE CASCADE,
     CONSTRAINT unique_funcion_asiento UNIQUE (funcion_id, asiento_id)
 );
 
--- =========================
--- TABLA: tiquetes
--- =========================
 CREATE TABLE IF NOT EXISTS tiquetes (
     id SERIAL PRIMARY KEY,
     codigo VARCHAR(50) UNIQUE NOT NULL,
@@ -95,37 +66,18 @@ CREATE TABLE IF NOT EXISTS tiquetes (
     fecha_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total NUMERIC(10,2) NOT NULL,
     estado VARCHAR(20) CHECK (estado IN ('activo', 'usado', 'cancelado')) DEFAULT 'activo',
-
-    CONSTRAINT fk_usuario
-        FOREIGN KEY (usuario_id)
-        REFERENCES usuarios(id)
-        ON DELETE SET NULL,
-
-    CONSTRAINT fk_funcion
-        FOREIGN KEY (funcion_id)
-        REFERENCES funciones(id)
-        ON DELETE CASCADE
+    es_taquilla BOOLEAN DEFAULT FALSE,
+    fecha_uso TIMESTAMP,
+    CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    CONSTRAINT fk_funcion FOREIGN KEY (funcion_id) REFERENCES funciones(id) ON DELETE CASCADE
 );
 
--- =========================
--- TABLA: detalle_tiquete
--- =========================
 CREATE TABLE IF NOT EXISTS detalle_tiquete (
     id SERIAL PRIMARY KEY,
     tiquete_id INT NOT NULL,
     asiento_id INT NOT NULL,
     precio_unitario NUMERIC(10,2) NOT NULL,
-
-    CONSTRAINT fk_tiquete
-        FOREIGN KEY (tiquete_id)
-        REFERENCES tiquetes(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_asiento
-        FOREIGN KEY (asiento_id)
-        REFERENCES asientos(id)
-        ON DELETE CASCADE,
-
-    -- Evita repetir el mismo asiento en un mismo tiquete
+    CONSTRAINT fk_tiquete FOREIGN KEY (tiquete_id) REFERENCES tiquetes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_asiento FOREIGN KEY (asiento_id) REFERENCES asientos(id) ON DELETE CASCADE,
     CONSTRAINT unique_tiquete_asiento UNIQUE (tiquete_id, asiento_id)
 );
