@@ -99,6 +99,8 @@ THE-END/
 │   │   │   ├── Showtimes.jsx   # Página de funciones
 │   │   │   └── Seats.js        # Página de asientos
 │   │   ├── assets/             # Imágenes y recursos
+│   │   ├── components/
+│   │   │   └── DebugSeats.jsx  # Componente de debug
 │   │   ├── api.js              # Configuración de API
 │   │   ├── App.jsx             # Componente principal
 │   │   ├── App.css             # Estilos
@@ -107,6 +109,8 @@ THE-END/
 │   └── package.json
 ├── entitys.sql                 # Script de base de datos
 ├── fix_asientos.sql            # Script de corrección de asientos
+├── debug_asientos.js           # Script de diagnóstico
+├── GUIA_DIAGNOSTICO_ASIENTOS.md # Guía de diagnóstico
 ├── package.json
 └── README.md
 ```
@@ -351,6 +355,12 @@ npm start
 ### Problema: No aparecen los asientos al comprar boletas
 
 Si al seleccionar una función no aparecen los asientos, sigue estos pasos:
+
+> 📖 **Guía completa**: Ver [`GUIA_DIAGNOSTICO_ASIENTOS.md`](GUIA_DIAGNOSTICO_ASIENTOS.md) para diagnóstico detallado
+
+> 🔍 **Script de diagnóstico**: Ejecuta `node debug_asientos.js` para verificar automáticamente
+
+> 🐛 **Componente de debug**: Agrega [`DebugSeats.jsx`](frontend/src/components/DebugSeats.jsx) temporalmente para ver datos en tiempo real
 
 #### 1. Verificar que existan asientos en la base de datos
 
