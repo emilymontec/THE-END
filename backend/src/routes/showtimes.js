@@ -33,9 +33,6 @@ router.post('/', async (req, res) => {
     const result = await db.query(insertQuery, [pelicula_id, sala, fecha, hora, precio]);
     const funcId = result.rows[0].id;
 
-    // Nota: En Postgres/Nhost, la inicialización de asientos podría hacerse de forma diferente,
-    // pero seguiremos la lógica de insertar registros en funcion_asiento.
-    // Asumimos que los asientos ya existen en la tabla 'asientos'.
     const asientosResult = await db.query('SELECT id FROM asientos');
     
     if (asientosResult.rows.length > 0) {
@@ -53,13 +50,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Obtener asientos de una función específica
+// Obtener asientos de una función específica (con lógica de bloqueo temporal)
 router.get('/:id/seats', async (req, res) => {
   try {
     const query = `
       SELECT fa.id as mapping_id, 
-             CASE WHEN fa.ocupado THEN 'vendido' ELSE 'disponible' END as estado, 
-             a.fila, a.columna, a.id as asiento_id
+             a.fila, a.columna, a.id as asiento_id,
+             CASE 
+               WHEN fa.ocupado THEN 'vendido' 
+               WHEN fa.bloqueado_hasta > CURRENT_TIMESTAMP THEN 'bloqueado'
+               ELSE 'disponible' 
+             END as estado
       FROM funcion_asiento fa
       JOIN asientos a ON fa.asiento_id = a.id
       WHERE fa.funcion_id = $1
@@ -67,6 +68,31 @@ router.get('/:id/seats', async (req, res) => {
     `;
     const result = await db.query(query, [req.params.id]);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bloqueo temporal de asientos (5 minutos)
+router.post('/:id/lock-seats', async (req, res) => {
+  const { seats } = req.body; // Array de asiento_id
+  const funcId = req.params.id;
+  try {
+    const query = `
+      UPDATE funcion_asiento 
+      SET bloqueado_hasta = CURRENT_TIMESTAMP + interval '5 minutes'
+      WHERE funcion_id = $1 AND asiento_id = ANY($2) 
+      AND ocupado = FALSE 
+      AND (bloqueado_hasta IS NULL OR bloqueado_hasta < CURRENT_TIMESTAMP)
+      RETURNING *
+    `;
+    const result = await db.query(query, [funcId, seats]);
+    
+    if (result.rowCount < seats.length) {
+      return res.status(409).json({ error: 'Algunos asientos ya no están disponibles' });
+    }
+    
+    res.json({ message: 'Asientos bloqueados por 5 minutos' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

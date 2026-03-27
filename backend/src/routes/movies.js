@@ -3,10 +3,16 @@ import { db } from '../config/db.js';
 
 const router = express.Router();
 
-// Listar todas las películas
+// Listar todas las películas (Admin ve todas, otros solo activas)
 router.get('/', async (req, res) => {
+  const { role } = req.query; // Pasamos el rol por query para simplificar
   try {
-    const result = await db.query('SELECT * FROM peliculas ORDER BY id ASC');
+    let query = 'SELECT * FROM peliculas';
+    if (role !== 'admin') {
+      query += " WHERE estado = 'activa'";
+    }
+    query += ' ORDER BY id ASC';
+    const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,11 +32,11 @@ router.get('/:id', async (req, res) => {
 
 // Crear una película
 router.post('/', async (req, res) => {
-  const { titulo, genero, duracion, clasificacion, descripcion } = req.body;
+  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado } = req.body;
   try {
     const result = await db.query(
-      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion) VALUES($1, $2, $3, $4, $5) RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion]
+      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [titulo, genero, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa']
     );
     res.status(21).json(result.rows[0]);
   } catch (err) {
@@ -40,14 +46,29 @@ router.post('/', async (req, res) => {
 
 // Editar una película
 router.put('/:id', async (req, res) => {
-  const { titulo, genero, duracion, clasificacion, descripcion } = req.body;
+  const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado } = req.body;
   try {
     const result = await db.query(
-      'UPDATE peliculas SET titulo=$1, genero=$2, duracion=$3, clasificacion=$4, descripcion=$5 WHERE id=$6 RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion, req.params.id]
+      'UPDATE peliculas SET titulo=$1, genero=$2, duracion=$3, clasificacion=$4, descripcion=$5, imagen_url=$6, estado=$7 WHERE id=$8 RETURNING *',
+      [titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Película no encontrada' });
-    res.json({ message: 'Película actualizada', movie: result.rows[0] });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Cambiar estado (Activar/Desactivar)
+router.patch('/:id/status', async (req, res) => {
+  const { estado } = req.body;
+  try {
+    const result = await db.query(
+      'UPDATE peliculas SET estado=$1 WHERE id=$2 RETURNING *',
+      [estado, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Película no encontrada' });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

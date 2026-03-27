@@ -3,6 +3,7 @@ import cors from 'cors';
 import moviesRouter from './routes/movies.js';
 import showtimesRouter from './routes/showtimes.js';
 import ticketsRouter from './routes/tickets.js';
+import usersRouter from './routes/users.js';
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use('/movies', moviesRouter);
 app.use('/showtimes', showtimesRouter);
 app.use('/tickets', ticketsRouter);
+app.use('/users', usersRouter);
 
 app.get("/", (_, res) => {
   res.json("The-End backend running...");

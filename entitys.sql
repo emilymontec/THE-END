@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    rol VARCHAR(20) CHECK (rol IN ('admin', 'cliente')) NOT NULL,
+    rol VARCHAR(20) CHECK (rol IN ('admin', 'cliente', 'operario')) NOT NULL,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
