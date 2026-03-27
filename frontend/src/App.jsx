@@ -274,11 +274,21 @@ export default function App() {
     setSelectedSeats([]);
     setIsLoading(true);
     try {
+      console.log('🔍 Cargando asientos para función:', showtime.id);
+      console.log('📡 URL de API:', api.defaults.baseURL);
       const res = await api.get(`/showtimes/${showtime.id}/seats`);
+      console.log('✅ Respuesta del servidor:', res.data);
+      console.log('📊 Total asientos recibidos:', res.data.length);
+      if (res.data.length > 0) {
+        console.log('📋 Primer asiento:', res.data[0]);
+      }
       setSeats(res.data);
       setPage('seats');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
+      console.error('❌ Error cargando asientos:', err);
+      console.error('❌ Error response:', err.response?.data);
+      console.error('❌ Error message:', err.message);
       showMsg('error', 'ERROR DE ASIENTOS');
     } finally { setIsLoading(false); }
   };

@@ -111,6 +111,7 @@ THE-END/
 ├── fix_asientos.sql            # Script de corrección de asientos
 ├── debug_asientos.js           # Script de diagnóstico
 ├── GUIA_DIAGNOSTICO_ASIENTOS.md # Guía de diagnóstico
+├── SOLUCION_INMEDIATA.md       # Solución rápida
 ├── package.json
 └── README.md
 ```
@@ -355,6 +356,8 @@ npm start
 ### Problema: No aparecen los asientos al comprar boletas
 
 Si al seleccionar una función no aparecen los asientos, sigue estos pasos:
+
+> 🚨 **SOLUCIÓN INMEDIATA**: Ver [`SOLUCION_INMEDIATA.md`](SOLUCION_INMEDIATA.md) para solución rápida paso a paso
 
 > 📖 **Guía completa**: Ver [`GUIA_DIAGNOSTICO_ASIENTOS.md`](GUIA_DIAGNOSTICO_ASIENTOS.md) para diagnóstico detallado
 
