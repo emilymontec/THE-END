@@ -1005,8 +1005,14 @@ export default function App() {
                 <p className="movie-sub-meta">Asientos: <span style={{color:'black', fontStyle:'normal'}}>{lastTicket.seats}</span></p>
                 <p className="movie-sub-meta" style={{fontSize:'1.2rem', marginTop:'16px'}}>Total: <span style={{color:'var(--primary)', fontStyle:'normal', fontWeight:'900'}}>${parseFloat(lastTicket.total).toLocaleString()}</span></p>
               </div>
-              <div style={{display:'flex', gap:'16px', marginTop:'32px'}}>
-                <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={() => setPage('movies')}>VOLVER A CARTELERA</button>
+              <div style={{display:'flex', gap:'16px', marginTop:'32px', position:'relative', zIndex:10}}>
+                <button className="btn-marquee" style={{flex:1, padding:'12px', cursor:'pointer'}} onClick={() => {
+                  setLastTicket(null);
+                  setSelectedMovie(null);
+                  setSelectedShowtime(null);
+                  setSelectedSeats([]);
+                  setPage('movies');
+                }}>VOLVER A CARTELERA</button>
               </div>
             </div>
           )}
@@ -1015,7 +1021,7 @@ export default function App() {
           {(page === 'dashboard' || page === 'validar') && (
             <div className="admin-layout-wrapper">
               <aside className="admin-menu-centered">
-                <div className="gold-frame" style={{background:'var(--surface-container-high)', border:'none', padding:'24px'}}>
+                <div className="gold-frame admin-no-hover" style={{background:'var(--surface-container-high)', border:'none', padding:'24px', height:'100%'}}>
                   <h2 className="admit-one" style={{marginBottom:'24px'}}>Gestión</h2>
                   <nav style={{display:'flex', flexDirection:'column', gap:'8px'}}>
                     {role === 'admin' && (
@@ -1035,7 +1041,7 @@ export default function App() {
 
               <main className="admin-content-main">
                 {page === 'validar' ? (
-                  <div className="gold-frame" style={{background:'white', padding:'48px', textAlign:'center'}}>
+                  <div className="gold-frame admin-no-hover" style={{background:'white', padding:'48px', textAlign:'center', height:'100%'}}>
                     <span className="pre-title">Control de Seguridad</span>
                     <h3 className="main-title" style={{fontSize:'2rem'}}>Validar Ticket</h3>
                     
@@ -1069,7 +1075,7 @@ export default function App() {
                     )}
                   </div>
                 ) : (
-                  <div className="gold-frame" style={{background:'white', padding:'32px'}}>
+                  <div className="gold-frame admin-no-hover" style={{background:'white', padding:'32px', height:'100%'}}>
                     {adminTab === 'tarifas' ? (
                       <div>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
@@ -1183,7 +1189,7 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      <div className="gold-frame" style={{background:'white', padding:'32px'}}>
+                      <div className="gold-frame admin-no-hover" style={{background:'white', padding:'32px', height:'100%'}}>
                         <h3 className="movie-meta-title" style={{marginBottom:'32px', textAlign:'center'}}>Panel de Ventas</h3>
                         <div className="sales-cards-vertical" style={{marginBottom:'40px'}}>
                           <div className="poster-frame" style={{textAlign:'center'}}>
