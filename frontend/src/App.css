@@ -320,13 +320,9 @@ input:focus, select:focus {
   background: var(--surface-container-highest);
   padding: 12px;
   box-shadow: inset 0 0 0 4px var(--secondary), inset 0 0 0 6px var(--secondary-fixed), inset 0 0 0 8px var(--secondary), 0 10px 30px -10px rgba(0,0,0,0.3);
-  transition: transform 0.5s;
 }
 
-.gold-frame:hover { transform: scale(1.01); }
-
 .gold-frame.admin-no-hover {
-  transition: none !important;
   transform: none !important;
 }
 
@@ -345,11 +341,6 @@ input:focus, select:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.featured-movie:hover .featured-poster {
-  transform: scale(1.03);
 }
 
 .featured-overlay {
@@ -397,25 +388,21 @@ input:focus, select:focus {
   background: var(--surface-container-high);
   padding: 8px;
   box-shadow: inset 0 0 0 4px var(--secondary), inset 0 0 0 6px var(--secondary-fixed), inset 0 0 0 8px var(--secondary), 0 10px 30px -10px rgba(0,0,0,0.3);
-  transition: transform 0.5s;
-}
-
-.poster-frame:hover { transform: scale(1.02); }
-
-.secondary-poster-container {
-  aspect-ratio: 3/4;
-  overflow: hidden;
 }
 
 .secondary-poster {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.7s;
 }
 
-.secondary-movie:hover .secondary-poster {
-  transform: scale(1.05);
+.time-slot {
+  min-width: 80px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
 }
 
 /* Details and Showtimes */
@@ -473,17 +460,10 @@ input:focus, select:focus {
   margin-top: 16px;
 }
 
-.time-slot {
-  min-width: 80px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  transition: transform 0.2s;
+.secondary-poster-container {
+  aspect-ratio: 3/4;
+  overflow: hidden;
 }
-
-.time-slot:hover { transform: translateY(-2px); }
 
 .time-label {
   font-family: var(--font-label);
@@ -565,7 +545,6 @@ input:focus, select:focus {
 .seat-stitch:hover:not(.vendido):not(.bloqueado) { 
   background: var(--primary-container); 
   color: white; 
-  transform: scale(1.1);
 }
 
 .seat-stitch.selected { 
