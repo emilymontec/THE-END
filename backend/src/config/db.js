@@ -98,17 +98,38 @@ pool.connect(async (err, client, release) => {
       console.log('Salas base creadas.');
     }
 
-    // Asegurar que haya asientos (son necesarios para el funcionamiento)
+    // Asegurar que haya exactamente 150 asientos (15 filas x 10 columnas)
     const seatCount = await client.query('SELECT COUNT(*) FROM asientos');
-    if (parseInt(seatCount.rows[0].count) === 0) {
-      console.log('Insertando 150 asientos base...');
+    if (parseInt(seatCount.rows[0].count) !== 150) {
+      console.log('Reiniciando asientos para asegurar 150 (15x10)...');
+      // Limpiar asientos y relaciones existentes para evitar duplicados y conflictos
+      await client.query('TRUNCATE TABLE asientos CASCADE');
+      
       const filas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O'];
       for (let f of filas) {
         for (let c = 1; c <= 10; c++) {
-          await client.query('INSERT INTO asientos(numero, fila, columna) VALUES($1, $2, $3)', [(filas.indexOf(f) * 10) + c, f, c]);
+          const numero = (filas.indexOf(f) * 10) + c;
+          await client.query('INSERT INTO asientos(numero, fila, columna) VALUES($1, $2, $3)', [numero, f, c]);
         }
       }
-      console.log('150 asientos creados (15x10).');
+      console.log('150 asientos creados correctamente.');
+
+      // Vincular asientos a funciones existentes de forma masiva
+      console.log('Vinculando asientos a funciones existentes...');
+      await client.query(`
+        INSERT INTO funcion_asiento (funcion_id, asiento_id)
+        SELECT f.id, a.id 
+        FROM funciones f, asientos a
+        ON CONFLICT DO NOTHING
+      `);
+    } else {
+      // Si el conteo es 150, asegurar que todas las funciones tengan sus asientos
+      await client.query(`
+        INSERT INTO funcion_asiento (funcion_id, asiento_id)
+        SELECT f.id, a.id 
+        FROM funciones f, asientos a
+        ON CONFLICT DO NOTHING
+      `);
     }
     console.log('Tablas sincronizadas correctamente.');
   } catch (syncErr) {

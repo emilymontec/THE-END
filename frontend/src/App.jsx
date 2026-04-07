@@ -847,6 +847,11 @@ export default function App() {
 
                 {/* Asientos organizados por filas */}
                 <div className="seats-container" style={{display:'flex', flexDirection:'column', gap:'8px', alignItems:'center'}}>
+                  {seats.length === 0 && (
+                    <div style={{padding:'40px', textAlign:'center'}}>
+                      <p className="movie-sub-meta" style={{color:'black'}}>Cargando asientos o no hay asientos configurados para esta función...</p>
+                    </div>
+                  )}
                   {(() => {
                     // Agrupar asientos por fila
                     const seatsByRow = {};
