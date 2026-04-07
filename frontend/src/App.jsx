@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from './api';
 import { QRCodeSVG } from 'qrcode.react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import './App.css';
@@ -37,6 +38,34 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users' | 'tarifas'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef(null);
+  const selectedSeatsRef = useRef([]);
+
+  useEffect(() => {
+    selectedSeatsRef.current = selectedSeats;
+  }, [selectedSeats]);
+
+  useEffect(() => {
+    if (page === 'validar' && isScannerOpen) {
+      const scanner = new Html5QrcodeScanner("reader", { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 } 
+      }, false);
+
+      scanner.render((decodedText) => {
+        setTicketCode(decodedText);
+        setIsScannerOpen(false);
+        scanner.clear();
+      }, (error) => {
+        // console.warn(error);
+      });
+
+      return () => {
+        scanner.clear();
+      };
+    }
+  }, [page, isScannerOpen]);
 
   // Tarifas/Salas
   const [salas, setSalas] = useState([]);
@@ -106,6 +135,16 @@ export default function App() {
       loadMyPurchases();
     }
   }, [role, page]); // Refrescar cuando el rol o la página cambian
+
+  // Auto-descargar PDF al llegar a la confirmación
+  useEffect(() => {
+    if (page === 'confirmation' && lastTicket) {
+      const timer = setTimeout(() => {
+        downloadTicketPDF();
+      }, 1500); // 1.5s para asegurar que el QR y el DOM estén listos
+      return () => clearTimeout(timer);
+    }
+  }, [page, lastTicket]);
 
   const loadSalas = async () => {
     try {
@@ -250,7 +289,14 @@ export default function App() {
         } catch (err) { console.error(err); }
       }, 5000);
     }
-    return () => clearInterval(interval);
+    // Al salir de la página de asientos, desbloquear los que no se compraron
+    return () => {
+      clearInterval(interval);
+      if (page === 'seats' && selectedShowtime && selectedSeatsRef.current.length > 0) {
+        api.post(`/showtimes/${selectedShowtime.id}/unlock-seats`, { seats: selectedSeatsRef.current })
+          .catch(err => console.error('Error al desbloquear al salir:', err));
+      }
+    };
   }, [page, selectedShowtime]);
 
   const loadMovies = async () => {
@@ -388,11 +434,6 @@ export default function App() {
       showMsg('success', 'COMPRA COMPLETADA');
       setPage('confirmation');
       
-      // Auto-descargar PDF después de un pequeño retraso para asegurar que el DOM esté listo
-      setTimeout(() => {
-        downloadTicketPDF();
-      }, 1000);
-
       if (role === 'admin') loadStats();
       if (role === 'cliente') loadMyPurchases();
     } catch (err) { showMsg('error', 'ERROR EN COMPRA'); }
@@ -552,17 +593,26 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const canvas = await html2canvas(ticketElement, { backgroundColor: '#0a0a0a', scale: 2 });
+      // Configuramos html2canvas para capturar el fondo blanco del QR y el contenido correctamente
+      const canvas = await html2canvas(ticketElement, { 
+        backgroundColor: '#ffffff', 
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false
+      });
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Ticket_${lastTicket.codigo}.pdf`);
-      showMsg('success', 'PDF DESCARGADO');
+      pdf.save(`Ticket_${lastTicket?.codigo || 'CINE'}.pdf`);
+      showMsg('success', 'DESCARGA INICIADA');
     } catch (err) {
-      showMsg('error', 'ERROR DE PDF');
+      console.error('Error generando PDF:', err);
+      showMsg('error', 'FALLO AL GENERAR PDF AUTOMÁTICAMENTE');
     } finally { setIsLoading(false); }
   };
 
@@ -951,8 +1001,7 @@ export default function App() {
                 <p className="movie-sub-meta" style={{fontSize:'1.2rem', marginTop:'16px'}}>Total: <span style={{color:'var(--primary)', fontStyle:'normal', fontWeight:'900'}}>${parseFloat(lastTicket.total).toLocaleString()}</span></p>
               </div>
               <div style={{display:'flex', gap:'16px', marginTop:'32px'}}>
-                <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={() => setPage('movies')}>INICIO</button>
-                <button className="btn-marquee" style={{flex:1, padding:'12px', background:'var(--secondary)'}} onClick={downloadTicketPDF}>PDF</button>
+                <button className="btn-marquee" style={{flex:1, padding:'12px'}} onClick={() => setPage('movies')}>VOLVER A CARTELERA</button>
               </div>
             </div>
           )}
@@ -984,8 +1033,22 @@ export default function App() {
                   <div className="gold-frame" style={{background:'white', padding:'48px', textAlign:'center'}}>
                     <span className="pre-title">Control de Seguridad</span>
                     <h3 className="main-title" style={{fontSize:'2rem'}}>Validar Ticket</h3>
-                    <input placeholder="INGRESE SERIAL DE 8 DÍGITOS" value={ticketCode} onChange={e => setTicketCode(e.target.value.toUpperCase())} style={{fontSize:'2rem', textAlign:'center', letterSpacing:'8px', width:'100%', marginBottom:'32px'}} />
-                    <button className="btn-marquee" onClick={handleValidateTicket}>BUSCAR ARCHIVOS</button>
+                    
+                    {isScannerOpen ? (
+                      <div style={{maxWidth:'500px', margin:'0 auto'}}>
+                        <div id="reader"></div>
+                        <button className="btn-marquee" style={{marginTop:'20px', background:'var(--secondary)'}} onClick={() => setIsScannerOpen(false)}>CANCELAR ESCANEO</button>
+                      </div>
+                    ) : (
+                      <>
+                        <input placeholder="INGRESE SERIAL DE 8 DÍGITOS" value={ticketCode} onChange={e => setTicketCode(e.target.value.toUpperCase())} style={{fontSize:'2rem', textAlign:'center', letterSpacing:'8px', width:'100%', marginBottom:'32px'}} />
+                        <div style={{display:'flex', gap:'16px', justifyContent:'center'}}>
+                          <button className="btn-marquee" style={{width:'auto', padding:'12px 24px'}} onClick={handleValidateTicket}>BUSCAR ARCHIVOS</button>
+                          <button className="btn-marquee" style={{width:'auto', padding:'12px 24px', background:'var(--secondary)'}} onClick={() => setIsScannerOpen(true)}>ESCANEAR QR</button>
+                        </div>
+                      </>
+                    )}
+
                     {validationResult && (
                       <div className="poster-frame" style={{marginTop:'32px', padding:'24px'}}>
                         <p className="admit-one">Estado: <span style={{color: validationResult.status === 'Válido' ? 'green' : 'red'}}>{validationResult.status}</span></p>
