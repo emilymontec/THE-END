@@ -98,7 +98,8 @@ export default function App() {
     if (!url || url === '') return 'https://via.placeholder.com/400x600?text=SIN+POSTER';
     if (url.startsWith('http')) return url;
     // Si no empieza con http, asumimos que es una ruta relativa de uploads
-    return `http://localhost:4000/uploads/${url.split('/').pop()}`;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    return `${baseUrl}/uploads/${url.split('/').pop()}`;
   };
 
   const uniqueGenres = ['todos', ...new Set(movies.map(m => m.genero).filter(Boolean))];

@@ -15,7 +15,7 @@ export default function Seats() {
       const res = await api.post('/tickets',{funcion_id:funcionId,asientos:selected});
       alert('Compra exitosa, código: '+res.data.codigo);
     } catch (err) {
-      alert('Error: ' + err.response?.data?.error || err.message);
+      alert('Error: ' + err.response?.data?.error || (err.message));
     }
   }
 
