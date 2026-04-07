@@ -34,9 +34,14 @@ export default function App() {
   const [accessHistory, setAccessHistory] = useState([]);
   const [lastTicket, setLastTicket] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
-  const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users'
+  const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users' | 'tarifas'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+
+  // Tarifas/Salas
+  const [salas, setSalas] = useState([]);
+  const [showSalaModal, setShowSalaModal] = useState(false);
+  const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
 
   const showConfirm = (title, message, onConfirm) => {
     setConfirmModal({ show: true, title, message, onConfirm: () => { onConfirm(); setConfirmModal({ ...confirmModal, show: false }); } });
@@ -92,12 +97,51 @@ export default function App() {
       loadStats();
       loadAllSales();
       loadAccessHistory();
-      if (role === 'admin') loadAllUsers();
+      if (role === 'admin') {
+        loadAllUsers();
+        loadSalas();
+      }
     }
     if (role === 'cliente' && user) {
       loadMyPurchases();
     }
   }, [role, page]); // Refrescar cuando el rol o la página cambian
+
+  const loadSalas = async () => {
+    try {
+      const res = await api.get('/salas');
+      setSalas(res.data);
+    } catch (err) { console.error('Error cargando salas:', err); }
+  };
+
+  const handleSaveSala = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      if (salaForm.id) {
+        await api.put(`/salas/${salaForm.id}`, salaForm);
+      } else {
+        await api.post('/salas', salaForm);
+      }
+      showMsg('success', 'SALA/TARIFA GUARDADA');
+      setShowSalaModal(false);
+      setSalaForm({ nombre: '', precio_base: '' });
+      loadSalas();
+    } catch (err) { showMsg('error', 'ERROR AL GUARDAR'); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleDeleteSala = async (id) => {
+    showConfirm('ELIMINAR SALA', '¿ESTÁ SEGURO DE ELIMINAR ESTA SALA?', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/salas/${id}`);
+        showMsg('success', 'SALA ELIMINADA');
+        loadSalas();
+      } catch (err) { showMsg('error', 'ERROR AL ELIMINAR'); }
+      finally { setIsLoading(false); }
+    });
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -924,6 +968,7 @@ export default function App() {
                       <>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='sales' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('sales')}>Ventas</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='movies' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('movies')}>Películas</button>
+                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='tarifas' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('tarifas')}>Tarifas</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='users' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('users')}>Personal</button>
                       </>
                     )}
@@ -957,7 +1002,37 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="gold-frame" style={{background:'white', padding:'32px'}}>
-                    {adminTab === 'users' ? (
+                    {adminTab === 'tarifas' ? (
+                      <div>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
+                          <h3 className="movie-meta-title">Gestión de Tarifas y Salas</h3>
+                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => { setSalaForm({ nombre: '', precio_base: '' }); setShowSalaModal(true); }}>+ AGREGAR SALA</button>
+                        </div>
+                        <div className="admin-tables-wrapper">
+                          <table style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead>
+                              <tr style={{borderBottom:'2px solid var(--secondary)'}}>
+                                <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Sala</th>
+                                <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Precio Base</th>
+                                <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {salas.map(s => (
+                                <tr key={s.id} style={{borderBottom:'1px solid #eee'}}>
+                                  <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>{s.nombre}</td>
+                                  <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>${parseFloat(s.precio_base).toLocaleString()}</td>
+                                  <td style={{padding:'12px', display:'flex', gap:'8px'}}>
+                                    <button onClick={() => { setSalaForm(s); setShowSalaModal(true); }} style={{color:'var(--primary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>EDITAR</button>
+                                    <button onClick={() => handleDeleteSala(s.id)} style={{color:'red', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>ELIMINAR</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : adminTab === 'users' ? (
                       <div>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
                           <h3 className="movie-meta-title">Registros de Personal</h3>
@@ -1015,7 +1090,17 @@ export default function App() {
                                         <span onClick={() => handleDeleteShowtime(s.id)} style={{color:'red', cursor:'pointer', fontWeight:'bold'}}>×</span>
                                       </div>
                                     ))}
-                                    <button onClick={() => { setShowtimeForm({ ...showtimeForm, pelicula_id: m.id }); setShowShowtimeModal(true); }} style={{fontSize:'0.6rem', padding:'2px 6px', cursor:'pointer', background:'var(--primary)', color:'white', border:'none'}}>+ AGREGAR</button>
+                                    <button onClick={() => { 
+                                      const initialSala = salas.length > 0 ? salas[0] : { nombre: 'Sala 1', precio_base: '12000' };
+                                      setShowtimeForm({ 
+                                        pelicula_id: m.id, 
+                                        sala: initialSala.nombre, 
+                                        fecha: '', 
+                                        hora: '', 
+                                        precio: initialSala.precio_base 
+                                      }); 
+                                      setShowShowtimeModal(true); 
+                                    }} style={{fontSize:'0.6rem', padding:'2px 6px', cursor:'pointer', background:'var(--primary)', color:'white', border:'none'}}>+ AGREGAR</button>
                                   </div>
                                 </td>
                                 <td style={{padding:'12px', display:'flex', gap:'8px'}}>
@@ -1156,10 +1241,26 @@ export default function App() {
               </div>
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>SALA</span>
-                <select value={showtimeForm.sala} onChange={e => setShowtimeForm({...showtimeForm, sala: e.target.value})}>
-                  <option value="Sala 1">Sala 1 (Principal)</option>
-                  <option value="Sala 2">Sala 2 (VIP)</option>
-                  <option value="Sala 3">Sala 3 (3D)</option>
+                <select 
+                  value={showtimeForm.sala} 
+                  onChange={e => {
+                    const selectedSala = salas.find(s => s.nombre === e.target.value);
+                    setShowtimeForm({
+                      ...showtimeForm, 
+                      sala: e.target.value,
+                      precio: selectedSala ? selectedSala.precio_base : showtimeForm.precio
+                    });
+                  }}
+                >
+                  {salas.length > 0 ? (
+                    salas.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)
+                  ) : (
+                    <>
+                      <option value="Sala 1">Sala 1 (Principal)</option>
+                      <option value="Sala 2">Sala 2 (VIP)</option>
+                      <option value="Sala 3">Sala 3 (3D)</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -1168,6 +1269,28 @@ export default function App() {
               </div>
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
                 <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowShowtimeModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showSalaModal && (
+        <div className="modal-overlay">
+          <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'450px', padding:'40px'}}>
+            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{salaForm.id ? 'EDITAR SALA' : 'NUEVA SALA'}</h3>
+            <form onSubmit={handleSaveSala} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>NOMBRE DE LA SALA</span>
+                <input placeholder="Ej: Sala IMAX" required value={salaForm.nombre} onChange={e => setSalaForm({...salaForm, nombre: e.target.value})} />
+              </div>
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>PRECIO BASE ($)</span>
+                <input type="number" placeholder="Ej: 15000" required value={salaForm.precio_base} onChange={e => setSalaForm({...salaForm, precio_base: e.target.value})} />
+              </div>
+              <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowSalaModal(false)}>CANCELAR</button>
                 <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
               </div>
             </form>

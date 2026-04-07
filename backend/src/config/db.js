@@ -9,12 +9,13 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Configuración de la conexión a PostgreSQL (Nhost)
+// Configuración de la conexión a PostgreSQL (Nhost o Local)
+const dbUrl = process.env.NHOST_DB_URL;
+const isNhost = dbUrl && dbUrl.includes('nhost.run');
+
 const pool = new Pool({
-  connectionString: process.env.NHOST_DB_URL,
-  ssl: {
-    rejectUnauthorized: false // Requerido para conexiones seguras a Nhost
-  }
+  connectionString: dbUrl,
+  ssl: isNhost ? { rejectUnauthorized: false } : false
 });
 
 // Probar conexión y sincronizar tablas
@@ -24,21 +25,28 @@ pool.connect(async (err, client, release) => {
   }
   console.log('Conectado a la base de datos de Nhost (PostgreSQL)');
   
-  // Sincronizar tablas automáticamente al iniciar
+  // Sincronizar tablas automáticamente al iniciar (Solo si no existen)
   try {
-    /*
-    // const sqlPath = path.join(__dirname, '../../../entitys.sql');
-    // if (fs.existsSync(sqlPath)) {
-    //   const sql = fs.readFileSync(sqlPath, 'utf8');
-    //   await client.query(sql);
+    const sqlPath = path.join(__dirname, '../../../entitys.sql');
+    if (fs.existsSync(sqlPath)) {
+      // Verificar si ya existe alguna tabla base para evitar re-ejecutar todo el SQL
+      const checkTable = await client.query("SELECT to_regclass('public.usuarios')");
+      if (!checkTable.rows[0].to_regclass) {
+        console.log('Inicializando base de datos por primera vez...');
+        const sql = fs.readFileSync(sqlPath, 'utf8');
+        await client.query(sql);
+      } else {
+        console.log('Base de datos detectada, verificando actualizaciones...');
+      }
       
-      // Añadir columna para bloqueo temporal si no existe
+      // Asegurar que las columnas nuevas existan (Migraciones seguras)
       await client.query(`
-        ALTER TABLE funcion_asiento 
-        ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP;
+        ALTER TABLE funcion_asiento ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP;
+        ALTER TABLE tiquetes ADD COLUMN IF NOT EXISTS es_taquilla BOOLEAN DEFAULT FALSE;
+        ALTER TABLE tiquetes ADD COLUMN IF NOT EXISTS fecha_uso TIMESTAMP;
       `);
 
-      // Asegurar que la columna rol acepte 'operario' ANTES de insertar usuarios base
+      // Asegurar que la columna rol acepte 'operario' (Sin borrar datos)
       await client.query(`
         DO $$ 
         BEGIN 
@@ -52,34 +60,44 @@ pool.connect(async (err, client, release) => {
       `);
 
       // Usuarios base (Admin y Operario inicial)
-      // const userCount = await client.query('SELECT COUNT(*) FROM usuarios');
-      // if (parseInt(userCount.rows[0].count) === 0) {
-      //   console.log('Insertando usuarios base...');
-      //   // Usar credenciales del administrador desde .env o valores por defecto
-      //   const adminUser = process.env.ADMIN_USERNAME;
-      //   const adminPass = process.env.ADMIN_PASSWORD;
+      const userCount = await client.query('SELECT COUNT(*) FROM usuarios');
+      if (parseInt(userCount.rows[0].count) === 0) {
+        console.log('Insertando usuarios base...');
+        const adminUser = process.env.ADMIN_USERNAME || 'admin@cinema.com';
+        const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
         
-      //   await client.query(
-      //     "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
-      //     ['Administrador', adminUser, adminPass, 'admin']
-      //   );
-      //   await client.query(
-      //     "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
-      //     ['Taquilla 1', 'staff@cinema.com', 'staff123', 'operario']
-      //   );
-      //   console.log(`Usuario base '${adminUser}' creado.`);
-      // }
+        await client.query(
+          "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
+          ['Administrador', adminUser, adminPass, 'admin']
+        );
+        await client.query(
+          "INSERT INTO usuarios(nombre, email, password, rol) VALUES($1, $2, $3, $4)",
+          ['Taquilla 1', 'staff@cinema.com', 'staff123', 'operario']
+        );
+        console.log(`Usuario base creado.`);
+      }
+    }
 
-      // Añadir columna para origen de venta si no existe
-      await client.query(`
-        ALTER TABLE tiquetes 
-        ADD COLUMN IF NOT EXISTS es_taquilla BOOLEAN DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS fecha_uso TIMESTAMP;
-      `);
-      
-      console.log('Tablas sincronizadas');
+    // Asegurar que exista la tabla de salas
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS salas (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(50) UNIQUE NOT NULL,
+        precio_base NUMERIC(10,2) NOT NULL DEFAULT 0
+      );
+    `);
 
-    */
+    // Insertar salas base si no existen
+    const salaCount = await client.query('SELECT COUNT(*) FROM salas');
+    if (parseInt(salaCount.rows[0].count) === 0) {
+      console.log('Insertando salas base...');
+      await client.query("INSERT INTO salas(nombre, precio_base) VALUES('Sala 1', 12000)");
+      await client.query("INSERT INTO salas(nombre, precio_base) VALUES('Sala 2', 15000)");
+      await client.query("INSERT INTO salas(nombre, precio_base) VALUES('Sala 3D', 22000)");
+      await client.query("INSERT INTO salas(nombre, precio_base) VALUES('Sala IMAX', 30000)");
+      console.log('Salas base creadas.');
+    }
+
     // Asegurar que haya asientos (son necesarios para el funcionamiento)
     const seatCount = await client.query('SELECT COUNT(*) FROM asientos');
     if (parseInt(seatCount.rows[0].count) === 0) {
@@ -92,6 +110,7 @@ pool.connect(async (err, client, release) => {
       }
       console.log('150 asientos creados (15x10).');
     }
+    console.log('Tablas sincronizadas correctamente.');
   } catch (syncErr) {
     console.error('Error sincronizando tablas:', syncErr.message);
   } finally {

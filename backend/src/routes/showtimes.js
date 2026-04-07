@@ -21,9 +21,19 @@ router.get('/', async (req, res) => {
 
 // Crear una nueva función
 router.post('/', async (req, res) => {
-  const { pelicula_id, sala, fecha, hora, precio } = req.body;
+  let { pelicula_id, sala, fecha, hora, precio } = req.body;
   try {
     await db.query('BEGIN');
+
+    // Si no se envía precio, buscar el precio_base de la sala
+    if (!precio) {
+      const salaResult = await db.query('SELECT precio_base FROM salas WHERE nombre = $1', [sala]);
+      if (salaResult.rows.length > 0) {
+        precio = salaResult.rows[0].precio_base;
+      } else {
+        precio = 12000; // Valor por defecto si la sala no existe en la tabla
+      }
+    }
     
     const insertQuery = `
       INSERT INTO funciones(pelicula_id, sala, fecha, hora, precio) 
