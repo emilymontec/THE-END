@@ -44,7 +44,30 @@ pool.connect(async (err, client, release) => {
         ALTER TABLE funcion_asiento ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP;
         ALTER TABLE tiquetes ADD COLUMN IF NOT EXISTS es_taquilla BOOLEAN DEFAULT FALSE;
         ALTER TABLE tiquetes ADD COLUMN IF NOT EXISTS fecha_uso TIMESTAMP;
+        ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellidos VARCHAR(100);
+        ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS username VARCHAR(150) UNIQUE;
       `);
+
+      // Migración: Llenar apellidos y username para registros antiguos si están en NULL
+      const oldUsers = await client.query('SELECT id, nombre, email FROM usuarios WHERE username IS NULL OR apellidos IS NULL');
+      for (let user of oldUsers.rows) {
+        const apellidos = user.apellidos || 'Sin Apellido';
+        const baseUsername = `${user.nombre}_${apellidos}`.toLowerCase().replace(/\s+/g, '');
+        let username = baseUsername;
+        let counter = 1;
+        let isUnique = false;
+        
+        while (!isUnique) {
+          const check = await client.query('SELECT id FROM usuarios WHERE username = $1 AND id != $2', [username, user.id]);
+          if (check.rows.length === 0) {
+            isUnique = true;
+          } else {
+            username = `${baseUsername}${counter}`;
+            counter++;
+          }
+        }
+        await client.query('UPDATE usuarios SET apellidos = $1, username = $2 WHERE id = $3', [apellidos, username, user.id]);
+      }
 
       // Asegurar que la columna rol acepte 'operario' (Sin borrar datos)
       await client.query(`

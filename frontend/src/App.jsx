@@ -12,7 +12,8 @@ export default function App() {
   const [page, setPage] = useState('movies');
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
-  const [loginForm, setLoginForm] = useState({ email: '', password: '', nombre: '' });
+  const [loginForm, setLoginForm] = useState({ email: '', password: '', nombre: '', apellidos: '' });
+  const [profileForm, setProfileForm] = useState({ nombre: '', apellidos: '', email: '', password: '' });
   const [movies, setMovies] = useState([]);
   const [showtimes, setShowtimes] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
@@ -120,6 +121,17 @@ export default function App() {
     setAdminTab('sales');
   }, [user]); // Redirigir solo cuando el usuario cambia (login/logout)
 
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        nombre: user.nombre || '',
+        apellidos: user.apellidos || '',
+        email: user.email || '',
+        password: ''
+      });
+    }
+  }, [user]);
+
   useEffect(() => { 
     loadMovies(); 
     loadAllShowtimes(); // Cargar todas las funciones al inicio
@@ -190,6 +202,12 @@ export default function App() {
       const res = await api.post('/users/login', loginForm);
       setUser(res.data);
       setRole(res.data.rol);
+      setProfileForm({ 
+        nombre: res.data.nombre, 
+        apellidos: res.data.apellidos || '', 
+        email: res.data.email, 
+        password: '' 
+      });
       localStorage.setItem('user', JSON.stringify(res.data));
       showMsg('success', `BIENVENIDO ${res.data.nombre.toUpperCase()}`);
     } catch (err) {
@@ -199,15 +217,41 @@ export default function App() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (!loginForm.nombre || !loginForm.apellidos) {
+      showMsg('error', 'Nombre y apellidos son requeridos');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const res = await api.post('/users/register', loginForm);
       setUser(res.data);
       setRole(res.data.rol);
+      setProfileForm({ 
+        nombre: res.data.nombre, 
+        apellidos: res.data.apellidos || '', 
+        email: res.data.email, 
+        password: '' 
+      });
       localStorage.setItem('user', JSON.stringify(res.data));
       showMsg('success', 'CUENTA CREADA');
     } catch (err) {
-      showMsg('error', 'EL EMAIL YA ESTÁ REGISTRADO');
+      showMsg('error', 'EL EMAIL O USERNAME YA ESTÁ REGISTRADO');
+    } finally { setIsLoading(false); }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const res = await api.put(`/users/profile/${user.id}`, profileForm);
+      const updatedUser = { ...user, ...res.data };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setProfileForm(prev => ({ ...prev, password: '' }));
+      showMsg('success', 'PERFIL ACTUALIZADO');
+    } catch (err) {
+      showMsg('error', err.response?.data?.error || 'ERROR AL ACTUALIZAR PERFIL');
     } finally { setIsLoading(false); }
   };
 
@@ -628,6 +672,9 @@ export default function App() {
         </div>
         <nav className="nav-links">
           <span className={page === 'movies' ? 'active' : ''} onClick={() => setPage('movies')}>Cartelera</span>
+          {user && (
+            <span className={page === 'profile' ? 'active' : ''} onClick={() => setPage('profile')}>Mi Perfil</span>
+          )}
           {user && role === 'cliente' && (
             <span className={page === 'my-purchases' ? 'active' : ''} onClick={() => setPage('my-purchases')}>Mis Compras</span>
           )}
@@ -670,7 +717,10 @@ export default function App() {
               </div>
               <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{display:'flex', flexDirection:'column', gap:'20px'}}>
                 {authMode === 'register' && (
-                  <input placeholder="NOMBRE" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} />
+                  <>
+                    <input placeholder="NOMBRES" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} />
+                    <input placeholder="APELLIDOS" required value={loginForm.apellidos} onChange={e => setLoginForm({...loginForm, apellidos: e.target.value})} />
+                  </>
                 )}
                 <input type="text" placeholder="USUARIO / EMAIL" required value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
                 <input type="password" placeholder="CONTRASEÑA" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
@@ -678,6 +728,50 @@ export default function App() {
                 <button type="button" style={{background:'transparent', border:'none', color:'var(--secondary)', cursor:'pointer', fontStyle:'italic'}} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
                   {authMode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
                 </button>
+              </form>
+            </div>
+          )}
+
+          {/* PROFILE VIEW */}
+          {page === 'profile' && user && (
+            <div className="gold-frame" style={{maxWidth:'550px', margin:'60px auto', background:'white', padding:'40px'}}>
+              <div style={{textAlign:'center', marginBottom:'32px'}}>
+                <span className="pre-title">Configuración</span>
+                <h3 className="movie-meta-title" style={{fontSize:'2rem'}}>MI PERFIL</h3>
+                <p className="movie-sub-meta" style={{color:'var(--primary)', fontWeight:'bold'}}>@{user.username}</p>
+              </div>
+              
+              <form onSubmit={handleUpdateProfile} style={{display:'flex', flexDirection:'column', gap:'20px'}}>
+                <div style={{display:'flex', gap:'15px'}}>
+                  <div style={{flex:1}}>
+                    <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NOMBRES</label>
+                    <input placeholder="NOMBRES" required value={profileForm.nombre} onChange={e => setProfileForm({...profileForm, nombre: e.target.value})} />
+                  </div>
+                  <div style={{flex:1}}>
+                    <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>APELLIDOS</label>
+                    <input placeholder="APELLIDOS" required value={profileForm.apellidos} onChange={e => setProfileForm({...profileForm, apellidos: e.target.value})} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NOMBRE DE USUARIO (AUTOMÁTICO)</label>
+                  <input value={`@${profileForm.nombre.toLowerCase()}_${profileForm.apellidos.toLowerCase()}`.replace(/\s+/g, '')} disabled style={{background:'#f5f5f5', color:'#888', fontStyle:'italic'}} />
+                </div>
+
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>CORREO ELECTRÓNICO</label>
+                  <input type="email" placeholder="EMAIL" required value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})} />
+                </div>
+
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NUEVA CONTRASEÑA (OPCIONAL)</label>
+                  <input type="password" placeholder="DEJAR EN BLANCO PARA NO CAMBIAR" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} />
+                </div>
+
+                <div style={{display:'flex', gap:'15px', marginTop:'10px'}}>
+                  <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setPage('movies')}>CANCELAR</button>
+                  <button type="submit" className="btn-marquee" style={{flex:1}}>ACTUALIZAR DATOS</button>
+                </div>
               </form>
             </div>
           )}
