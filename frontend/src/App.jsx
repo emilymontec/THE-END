@@ -1063,10 +1063,16 @@ export default function App() {
 
                     {validationResult && (
                       <div className="poster-frame" style={{marginTop:'32px', padding:'24px'}}>
-                        <p className="admit-one">Estado: <span style={{color: validationResult.status === 'Válido' ? 'green' : 'red'}}>{validationResult.status}</span></p>
+                        <p className="admit-one">Estado: <span style={{color: validationResult.status === 'Válido' ? 'green' : validationResult.status === 'Inactivo' ? '#e67e22' : 'red'}}>{validationResult.status}</span></p>
+                        {validationResult.message && (
+                          <p className="movie-sub-meta" style={{color: validationResult.status === 'Inactivo' ? '#e67e22' : 'inherit', fontStyle: 'normal', marginTop: '8px', fontWeight: 'bold'}}>
+                            {validationResult.message}
+                          </p>
+                        )}
                         {validationResult.ticket && (
                           <div style={{marginTop:'16px'}}>
-                            <p className="movie-meta-title">{validationResult.ticket.titulo}</p>
+                            <p className="movie-meta-title" style={{fontSize: '1.2rem'}}>{validationResult.ticket.titulo}</p>
+                            <p className="movie-sub-meta" style={{color:'black', fontStyle:'normal'}}>{validationResult.ticket.fecha} {validationResult.ticket.hora}</p>
                             {validationResult.status === 'Válido' && (
                               <button className="btn-marquee" style={{marginTop:'24px'}} onClick={handleUseTicket}>ADMITIR CLIENTE</button>
                             )}

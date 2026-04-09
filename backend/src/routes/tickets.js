@@ -113,7 +113,7 @@ router.get('/validate/:codigo', async (req, res) => {
   const { codigo } = req.params;
   try {
     const query = `
-      SELECT t.*, f.fecha, f.hora, p.titulo 
+      SELECT t.*, f.fecha, f.hora, p.titulo, (f.fecha + f.hora) as funcion_timestamp
       FROM tiquetes t
       JOIN funciones f ON t.funcion_id = f.id
       JOIN peliculas p ON f.pelicula_id = p.id
@@ -130,6 +130,21 @@ router.get('/validate/:codigo', async (req, res) => {
       return res.json({ status: 'Usado', message: 'Tiquete ya fue utilizado', ticket });
     }
 
+    // Lógica de activación: 20 minutos antes de la función
+    const funcionTime = new Date(ticket.funcion_timestamp);
+    const currentTime = new Date();
+    const diffMs = funcionTime - currentTime;
+    const diffMin = diffMs / (1000 * 60);
+
+    // Si faltan más de 20 minutos para la función
+    if (diffMin > 20) {
+      return res.json({ 
+        status: 'Inactivo', 
+        message: 'Tiquete aún no está activo. Se activará 20 minutos antes de la función.',
+        ticket 
+      });
+    }
+
     res.json({ status: 'Válido', message: 'Tiquete activo', ticket });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -139,14 +154,40 @@ router.get('/validate/:codigo', async (req, res) => {
 // 3. Marcar tiquete como usado
 router.post('/use/:codigo', async (req, res) => {
   try {
+    const { codigo } = req.params;
+    
+    // Primero verificar si el tiquete es válido y si está en tiempo
+    const query = `
+      SELECT t.*, (f.fecha + f.hora) as funcion_timestamp
+      FROM tiquetes t
+      JOIN funciones f ON t.funcion_id = f.id
+      WHERE t.codigo = $1
+    `;
+    const checkResult = await db.query(query, [codigo.toUpperCase()]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tiquete no encontrado' });
+    }
+
+    const ticket = checkResult.rows[0];
+    if (ticket.estado !== 'activo') {
+      return res.status(400).json({ error: `Tiquete no válido (Estado: ${ticket.estado})` });
+    }
+
+    // Verificar tiempo
+    const funcionTime = new Date(ticket.funcion_timestamp);
+    const currentTime = new Date();
+    const diffMin = (funcionTime - currentTime) / (1000 * 60);
+
+    if (diffMin > 20) {
+      return res.status(400).json({ error: 'Tiquete aún no activado (faltan más de 20 min)' });
+    }
+
     const result = await db.query(
-      'UPDATE tiquetes SET estado = $1, fecha_uso = CURRENT_TIMESTAMP WHERE codigo = $2 AND estado = $3 RETURNING *',
-      ['usado', req.params.codigo.toUpperCase(), 'activo']
+      'UPDATE tiquetes SET estado = $1, fecha_uso = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      ['usado', ticket.id]
     );
     
-    if (result.rowCount === 0) {
-      return res.status(400).json({ error: 'Tiquete no válido para usar' });
-    }
     res.json({ message: 'Tiquete usado correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
