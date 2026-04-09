@@ -24,9 +24,9 @@ export default function App() {
   const [showMovieModal, setShowMovieModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showShowtimeModal, setShowShowtimeModal] = useState(false);
-  const [movieForm, setMovieForm] = useState({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
+  const [movieForm, setMovieForm] = useState({ titulo: '', genero: [], duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
   const [userForm, setUserForm] = useState({ nombre: '', email: '', password: '', rol: 'operario' });
-  const [showtimeForm, setShowtimeForm] = useState({ pelicula_id: '', sala: 'Sala 1', fecha: '', hora: '', precio: '12000' });
+  const [showtimeForm, setShowtimeForm] = useState({ pelicula_id: '', sala: '', fecha: '', hora: '', precio: '' });
   const [stats, setStats] = useState(null);
   const [ticketCode, setTicketCode] = useState('');
   const [validationResult, setValidationResult] = useState(null);
@@ -36,14 +36,17 @@ export default function App() {
   const [accessHistory, setAccessHistory] = useState([]);
   const [lastTicket, setLastTicket] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
-  const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users' | 'tarifas'
+  const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users' | 'tarifas' | 'categorias'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
   const [showSalaModal, setShowSalaModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
+  const [categoriaForm, setCategoriaForm] = useState({ nombre: '' });
   const [guestForm, setGuestForm] = useState({ nombre: '', apellidos: '', email: '', password: '', banco: '', tarjeta: '', cvv: '' });
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [categorias, setCategorias] = useState([]);
   const scannerRef = useRef(null);
   const selectedSeatsRef = useRef([]);
 
@@ -79,9 +82,6 @@ export default function App() {
     setConfirmModal({ show: true, title, message, onConfirm: () => { onConfirm(); setConfirmModal({ ...confirmModal, show: false }); } });
   };
 
-  // Filtros
-  const [search, setSearch] = useState('');
-  const [genreFilter, setGenreFilter] = useState('todos');
   const [allShowtimes, setAllShowtimes] = useState([]);
 
   const loadAllShowtimes = async () => {
@@ -93,10 +93,6 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    // Ya se llama en el useEffect principal con role/page
-  }, [page]);
-
   const getImageUrl = (url) => {
     if (!url || url === '') return 'https://via.placeholder.com/400x600?text=SIN+POSTER';
     if (url.startsWith('http')) return url;
@@ -104,13 +100,6 @@ export default function App() {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
     return `${baseUrl}/uploads/${url.split('/').pop()}`;
   };
-
-  const uniqueGenres = ['todos', ...new Set(movies.map(m => m.genero).filter(Boolean))];
-  const filteredMovies = movies.filter(m => {
-    const matchesSearch = (m.titulo || '').toLowerCase().includes(search.toLowerCase());
-    const matchesGenre = genreFilter === 'todos' || m.genero === genreFilter;
-    return matchesSearch && matchesGenre;
-  });
 
   useEffect(() => {
     // Si estamos en medio de una compra o en la confirmación, no redirigimos automáticamente
@@ -148,6 +137,7 @@ export default function App() {
       if (role === 'admin') {
         loadAllUsers();
         loadSalas();
+        loadCategorias();
       }
     }
     if (role === 'cliente' && user) {
@@ -170,6 +160,13 @@ export default function App() {
       const res = await api.get('/salas');
       setSalas(res.data);
     } catch (err) { console.error('Error cargando salas:', err); }
+  };
+
+  const loadCategorias = async () => {
+    try {
+      const res = await api.get('/categorias');
+      setCategorias(res.data);
+    } catch (err) { console.error('Error cargando categorías:', err); }
   };
 
   const handleSaveSala = async (e) => {
@@ -196,6 +193,31 @@ export default function App() {
         await api.delete(`/salas/${id}`);
         showMsg('success', 'SALA ELIMINADA');
         loadSalas();
+      } catch (err) { showMsg('error', 'ERROR AL ELIMINAR'); }
+      finally { setIsLoading(false); }
+    });
+  };
+
+  const handleSaveCategoria = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await api.post('/categorias', categoriaForm);
+      showMsg('success', 'CATEGORÍA GUARDADA');
+      setShowCategoriaModal(false);
+      setCategoriaForm({ nombre: '' });
+      loadCategorias();
+    } catch (err) { showMsg('error', err.response?.data?.error || 'ERROR AL GUARDAR'); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleDeleteCategoria = async (id) => {
+    showConfirm('ELIMINAR CATEGORÍA', '¿ESTÁ SEGURO DE ELIMINAR ESTA CATEGORÍA?', async () => {
+      setIsLoading(true);
+      try {
+        await api.delete(`/categorias/${id}`);
+        showMsg('success', 'CATEGORÍA ELIMINADA');
+        loadCategorias();
       } catch (err) { showMsg('error', 'ERROR AL ELIMINAR'); }
       finally { setIsLoading(false); }
     });
@@ -633,7 +655,7 @@ export default function App() {
       
       showMsg('success', 'PELÍCULA GUARDADA CORRECTAMENTE');
       setShowMovieModal(false);
-      setMovieForm({ titulo: '', genero: '', duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
+      setMovieForm({ titulo: '', genero: [], duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false });
       loadMovies();
     } catch (err) {
       console.error('Error al guardar película:', err);
@@ -866,7 +888,9 @@ export default function App() {
                             <div style={{flex:1}}>
                               <div className="movie-header">
                                 <div className="rating-box">{featuredMovie.clasificacion || 'A'}</div>
-                                <span className="movie-sub-meta">{featuredMovie.genero} • {featuredMovie.duracion} MIN</span>
+                                <span className="movie-sub-meta">
+                                  {Array.isArray(featuredMovie.genero) ? featuredMovie.genero.join(', ') : featuredMovie.genero} • {featuredMovie.duracion} MIN
+                                </span>
                               </div>
                               <p className="movie-summary">{featuredMovie.descripcion}</p>
                               
@@ -911,7 +935,9 @@ export default function App() {
                                   <div className="rating-box" style={{width:'30px', height:'30px', fontSize:'0.7rem'}}>{m.clasificacion || 'B'}</div>
                                   <h3 className="movie-meta-title" style={{fontSize:'1.2rem'}}>{m.titulo}</h3>
                                 </div>
-                                <p className="movie-sub-meta">{m.genero} • {m.duracion} MIN</p>
+                                <p className="movie-sub-meta">
+                                  {Array.isArray(m.genero) ? m.genero.join(', ') : m.genero} • {m.duracion} MIN
+                                </p>
                                 
                                 {/* Horarios Cortos */}
                                 <div style={{marginTop:'12px'}}>
@@ -1186,8 +1212,9 @@ export default function App() {
                     {role === 'admin' && (
                       <>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='sales' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('sales')}>Ventas</button>
-                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='movies' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('movies')}>Películas</button>
+                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='movies' ? 'var(--primary-container)' : ''}} onClick={() => { setAdminTab('movies'); loadCategorias(); }}>Películas</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='tarifas' ? 'var(--primary-container)' : ''}} onClick={() => { setAdminTab('tarifas'); loadSalas(); }}>Tarifas</button>
+                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='categorias' ? 'var(--primary-container)' : ''}} onClick={() => { setAdminTab('categorias'); loadCategorias(); }}>Categorías</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='users' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('users')}>Personal</button>
                       </>
                     )}
@@ -1300,11 +1327,42 @@ export default function App() {
                         </table>
                         </div>
                       </div>
+                    ) : adminTab === 'categorias' ? (
+                      <div>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
+                          <h3 className="movie-meta-title">Gestión de Categorías / Géneros</h3>
+                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => { setCategoriaForm({ nombre: '' }); setShowCategoriaModal(true); }}>+ AGREGAR CATEGORÍA</button>
+                        </div>
+                        <div className="admin-tables-wrapper">
+                          <table style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead>
+                              <tr style={{borderBottom:'2px solid var(--secondary)'}}>
+                                <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Nombre</th>
+                                <th className="admit-one" style={{textAlign:'left', padding:'12px'}}>Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {categorias.map(c => (
+                                <tr key={c.id} style={{borderBottom:'1px solid #eee'}}>
+                                  <td className="movie-sub-meta" style={{color:'black', padding:'12px', fontStyle:'normal'}}>{c.nombre}</td>
+                                  <td style={{padding:'12px'}}>
+                                    <button onClick={() => handleDeleteCategoria(c.id)} style={{color:'red', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>ELIMINAR</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     ) : adminTab === 'movies' ? (
                       <div>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'32px'}}>
                           <h3 className="movie-meta-title">Gestión de Películas</h3>
-                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => { setMovieForm({ titulo:'', genero:'', duracion:'', clasificacion:'', descripcion:'', imagen_url:'', estado:'activa' }); setShowMovieModal(true); }}>+ AGREGAR</button>
+                          <button className="btn-marquee" style={{width:'auto', padding:'10px 20px'}} onClick={() => { 
+                            setMovieForm({ titulo: '', genero: [], duracion: '', clasificacion: '', descripcion: '', imagen_url: '', estado: 'activa', destacada: false }); 
+                            setShowMovieModal(true); 
+                            loadCategorias();
+                          }}>+ AGREGAR</button>
                         </div>
                         <div className="admin-tables-wrapper">
                         <table style={{width:'100%', borderCollapse:'collapse'}}>
@@ -1343,7 +1401,13 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td style={{padding:'12px', display:'flex', gap:'8px'}}>
-                                  <button onClick={() => { setMovieForm({...m}); setShowMovieModal(true); }} style={{color:'var(--primary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>EDITAR</button>
+                                  <button onClick={() => { 
+                                     setMovieForm({
+                                       ...m,
+                                       genero: Array.isArray(m.genero) ? m.genero : (m.genero ? m.genero.split(',').map(s => s.trim()) : [])
+                                     }); 
+                                     setShowMovieModal(true); 
+                                   }} style={{color:'var(--primary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>EDITAR</button>
                                   <button onClick={() => toggleMovieStatus(m)} style={{color:'var(--secondary)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>{m.estado==='activa' ? 'DESACTIVAR' : 'ACTIVAR'}</button>
                                   <button onClick={() => handleDeleteMovie(m.id)} style={{color:'red', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-headline)', fontWeight:700, fontSize:'0.7rem', letterSpacing:'0.1em'}}>ELIMINAR</button>
                                 </td>
@@ -1414,13 +1478,55 @@ export default function App() {
       </footer>
 
       {/* MODALS */}
+      {showCategoriaModal && (
+        <div className="modal-overlay">
+          <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'400px', padding:'40px'}}>
+            <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>NUEVA CATEGORÍA</h3>
+            <form onSubmit={handleSaveCategoria} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
+              <input placeholder="NOMBRE DE LA CATEGORÍA" required value={categoriaForm.nombre} onChange={e => setCategoriaForm({...categoriaForm, nombre: e.target.value})} autoComplete="off" />
+              <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowCategoriaModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showMovieModal && (
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'500px', padding:'40px'}}>
             <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{movieForm.id ? 'ACTUALIZAR PELÍCULA' : 'REGISTRAR PELÍCULA'}</h3>
             <form onSubmit={handleSaveMovie} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
               <input placeholder="TÍTULO" required value={movieForm.titulo} onChange={e => setMovieForm({...movieForm, titulo: e.target.value})} autoComplete="off" />
-              <input placeholder="GÉNERO" required value={movieForm.genero} onChange={e => setMovieForm({...movieForm, genero: e.target.value})} autoComplete="off" />
+              <div>
+                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>GÉNEROS / CATEGORÍAS</span>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'12px', padding:'10px', border:'1px solid var(--accent)', minHeight:'40px'}}>
+                  {(!movieForm.genero || movieForm.genero.length === 0) && <span style={{color:'#888', fontSize:'0.7rem'}}>Selecciona categorías abajo...</span>}
+                  {Array.isArray(movieForm.genero) && movieForm.genero.map(g => (
+                    <span key={g} className="featured-badge" style={{margin:0, padding:'4px 10px', display:'flex', alignItems:'center', gap:'8px'}}>
+                      {g}
+                      <span onClick={() => setMovieForm({...movieForm, genero: movieForm.genero.filter(cat => cat !== g)})} style={{cursor:'pointer', fontWeight:'bold'}}>×</span>
+                    </span>
+                  ))}
+                </div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'5px'}}>
+                  {Array.isArray(categorias) && categorias.filter(cat => !movieForm.genero || !movieForm.genero.includes(cat.nombre)).map(cat => (
+                    <button 
+                      key={cat.id} 
+                      type="button" 
+                      className="btn-marquee" 
+                      style={{padding:'5px 10px', fontSize:'0.6rem', width:'auto', background:'none', border:'1px solid var(--secondary)', color:'var(--secondary)'}}
+                      onClick={() => {
+                        const currentGeneros = Array.isArray(movieForm.genero) ? movieForm.genero : [];
+                        setMovieForm({...movieForm, genero: [...currentGeneros, cat.nombre]});
+                      }}
+                    >
+                      + {cat.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div style={{display:'flex', gap:'16px'}}>
                 <input placeholder="DURACIÓN (MIN)" required type="number" value={movieForm.duracion} onChange={e => setMovieForm({...movieForm, duracion: e.target.value})} autoComplete="off" />
                 <input placeholder="CLASIFICACIÓN" required value={movieForm.clasificacion} onChange={e => setMovieForm({...movieForm, clasificacion: e.target.value})} autoComplete="off" />
@@ -1491,15 +1597,8 @@ export default function App() {
                     });
                   }}
                 >
-                  {salas.length > 0 ? (
-                    salas.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)
-                  ) : (
-                    <>
-                      <option value="Sala 1">Sala 1 (Principal)</option>
-                      <option value="Sala 2">Sala 2 (VIP)</option>
-                      <option value="Sala 3">Sala 3 (3D)</option>
-                    </>
-                  )}
+                  <option value="">Seleccione Sala...</option>
+                  {salas.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
                 </select>
               </div>
               <div>

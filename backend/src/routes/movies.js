@@ -34,12 +34,21 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada } = req.body;
   try {
+    // Normalizar género a un array de strings limpio
+    let generosArray = [];
+    if (Array.isArray(genero)) {
+      generosArray = genero;
+    } else if (typeof genero === 'string' && genero.trim() !== '') {
+      generosArray = genero.split(',').map(g => g.trim());
+    }
+    
     const result = await db.query(
-      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa', destacada || false]
+      'INSERT INTO peliculas(titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada) VALUES($1, $2::text[], $3, $4, $5, $6, $7, $8) RETURNING *',
+      [titulo, generosArray, duracion, clasificacion, descripcion, imagen_url || null, estado || 'activa', destacada || false]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    console.error('Error en POST /movies:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -48,13 +57,22 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada } = req.body;
   try {
+    // Normalizar género a un array de strings limpio
+    let generosArray = [];
+    if (Array.isArray(genero)) {
+      generosArray = genero;
+    } else if (typeof genero === 'string' && genero.trim() !== '') {
+      generosArray = genero.split(',').map(g => g.trim());
+    }
+
     const result = await db.query(
-      'UPDATE peliculas SET titulo=$1, genero=$2, duracion=$3, clasificacion=$4, descripcion=$5, imagen_url=$6, estado=$7, destacada=$8 WHERE id=$9 RETURNING *',
-      [titulo, genero, duracion, clasificacion, descripcion, imagen_url, estado, destacada, req.params.id]
+      'UPDATE peliculas SET titulo=$1, genero=$2::text[], duracion=$3, clasificacion=$4, descripcion=$5, imagen_url=$6, estado=$7, destacada=$8 WHERE id=$9 RETURNING *',
+      [titulo, generosArray, duracion, clasificacion, descripcion, imagen_url, estado, destacada, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Película no encontrada' });
     res.json(result.rows[0]);
   } catch (err) {
+    console.error('Error en PUT /movies:', err);
     res.status(400).json({ error: err.message });
   }
 });

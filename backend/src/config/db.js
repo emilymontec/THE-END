@@ -110,6 +110,37 @@ pool.connect(async (err, client, release) => {
       );
     `);
 
+    // Asegurar que exista la tabla de categorías
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS categorias (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(50) UNIQUE NOT NULL
+      );
+    `);
+
+    // Actualizar tabla de películas para soportar múltiples géneros de forma segura
+    try {
+      const peliculasTableInfo = await client.query(`
+        SELECT data_type 
+        FROM information_schema.columns 
+        WHERE table_name = 'peliculas' AND column_name = 'genero'
+      `);
+
+      if (peliculasTableInfo.rows.length > 0 && peliculasTableInfo.rows[0].data_type !== 'ARRAY') {
+        console.log('Migrando columna genero de peliculas a TEXT[]...');
+        // Asegurar que no haya nulos antes de migrar
+        await client.query("UPDATE peliculas SET genero = '' WHERE genero IS NULL");
+        // Migrar a TEXT[]
+        await client.query(`
+          ALTER TABLE peliculas 
+          ALTER COLUMN genero TYPE TEXT[] 
+          USING string_to_array(genero, ',')::TEXT[]
+        `);
+      }
+    } catch (migErr) {
+      console.error('Error migrando columna genero:', migErr);
+    }
+
     // Insertar salas base si no existen
     const salaCount = await client.query('SELECT COUNT(*) FROM salas');
     if (parseInt(salaCount.rows[0].count) === 0) {

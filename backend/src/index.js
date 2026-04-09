@@ -8,6 +8,7 @@ import ticketsRouter from './routes/tickets.js';
 import usersRouter from './routes/users.js';
 import uploadRouter from './routes/upload.js';
 import salasRouter from './routes/salas.js';
+import categoriasRouter from './routes/categorias.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ app.use('/tickets', ticketsRouter);
 app.use('/users', usersRouter);
 app.use('/upload', uploadRouter);
 app.use('/salas', salasRouter);
+app.use('/categorias', categoriasRouter);
 
 app.get("/", (_, res) => {
   res.json("The-End backend running...");
