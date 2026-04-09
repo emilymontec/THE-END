@@ -423,11 +423,10 @@ export default function App() {
       const filtered = res.data.filter(s => s.pelicula_id === movie.id);
       console.log('Funciones encontradas:', filtered.length);
       setShowtimes(filtered);
-      if (filtered.length > 0) {
-        setPage('showtimes');
-      } else {
-        showMsg('error', 'ESTA PELÍCULA NO TIENE FUNCIONES DISPONIBLES AÚN');
-      }
+      
+      // Permitir ver info detallada aunque no tenga funciones
+      setPage('showtimes');
+      
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       showMsg('error', 'ERROR AL CARGAR HORARIOS');
@@ -913,7 +912,9 @@ export default function App() {
                               <div className="rating-box" style={{width:'auto', padding:'0 10px', height:'30px', fontSize:'0.7rem', borderColor:'var(--primary)', color:'var(--primary)'}}>
                                 {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? 'DISPONIBLE' : 'AGOTADO'}
                               </div>
-                              <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>COMPRAR BOLETA</button>
+                              <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>
+                                VER MÁS
+                              </button>
                             </div>
                           </div>
                         </article>
@@ -956,7 +957,9 @@ export default function App() {
                                     {allShowtimes.filter(s => s.pelicula_id === m.id).length > 0 ? 'EN CARTELERA' : 'PRÓXIMAMENTE'}
                                   </span>
                                 </div>
-                                <button className="btn-marquee" style={{padding:'10px'}} onClick={() => handleSelectMovie(m)}>COMPRAR BOLETA</button>
+                                <button className="btn-marquee" style={{padding:'10px'}} onClick={() => handleSelectMovie(m)}>
+                                  VER MÁS
+                                </button>
                               </div>
                             </div>
                           </article>
@@ -984,17 +987,36 @@ export default function App() {
                   <img src={getImageUrl(selectedMovie.imagen_url)} alt={selectedMovie.titulo} style={{width:'100%', aspectRatio:'2/3', objectFit:'cover'}} />
                 </div>
                 <div className="showtimes-info">
-                  <p className="movie-summary" style={{fontSize:'1.5rem', marginBottom:'32px'}}>{selectedMovie.descripcion}</p>
-                  <div className="showtimes-timeslots">
-                    {showtimes.map(s => (
-                      <div key={s.id} className="time-slot evening" onClick={() => handleSelectShowtime(s)}>
-                        <span className="time-label">{s.fecha}</span>
-                        <span className="time-value">{s.hora}</span>
-                        <span className="time-label" style={{marginTop:'8px'}}>${parseFloat(s.precio).toLocaleString()}</span>
-                      </div>
-                    ))}
+                  <div style={{display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'24px'}}>
+                    {Array.isArray(selectedMovie.genero) ? selectedMovie.genero.map(g => (
+                      <span key={g} className="featured-badge" style={{margin:0, padding:'4px 12px', fontSize:'0.7rem'}}>{g}</span>
+                    )) : (
+                      <span className="featured-badge" style={{margin:0, padding:'4px 12px', fontSize:'0.7rem'}}>{selectedMovie.genero}</span>
+                    )}
+                    <span className="movie-sub-meta" style={{color:'black', display:'flex', alignItems:'center', marginLeft:'8px'}}>
+                      {selectedMovie.duracion} MIN | {selectedMovie.clasificacion}
+                    </span>
                   </div>
-                  <button className="btn-marquee btn-volver" onClick={() => setPage('movies')}>VOLVER</button>
+                  
+                  <p className="movie-summary" style={{fontSize:'1.5rem', marginBottom:'32px'}}>{selectedMovie.descripcion}</p>
+                  
+                  <div className="showtimes-timeslots">
+                    {showtimes.length > 0 ? (
+                      showtimes.map(s => (
+                        <div key={s.id} className="time-slot evening" onClick={() => handleSelectShowtime(s)}>
+                          <span className="time-label">{s.fecha}</span>
+                          <span className="time-value">{s.hora}</span>
+                          <span className="time-label" style={{marginTop:'8px'}}>${parseFloat(s.precio).toLocaleString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{gridColumn:'1 / -1', padding:'40px', textAlign:'center', border:'1px dashed var(--secondary)'}}>
+                        <p className="movie-meta-title" style={{fontSize:'1.2rem', color:'var(--secondary)'}}>AÚN NO HAY FUNCIONES PROGRAMADAS</p>
+                        <p className="movie-sub-meta" style={{color:'black', marginTop:'8px'}}>Vuelve pronto para consultar los horarios de esta película.</p>
+                      </div>
+                    )}
+                  </div>
+                  <button className="btn-marquee btn-volver" style={{marginTop:'32px'}} onClick={() => setPage('movies')}>VOLVER</button>
                 </div>
               </div>
             </div>
