@@ -42,6 +42,7 @@ export default function App() {
   const [showSalaModal, setShowSalaModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [showHallModal, setShowHallModal] = useState(false);
   const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
   const [categoriaForm, setCategoriaForm] = useState({ nombre: '' });
   const [guestForm, setGuestForm] = useState({ nombre: '', apellidos: '', email: '', password: '', banco: '', tarjeta: '', cvv: '' });
@@ -100,6 +101,47 @@ export default function App() {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
     return `${baseUrl}/uploads/${url.split('/').pop()}`;
   };
+
+  const formatShowtimeDate = (rawDate) => {
+    if (!rawDate) return 'FECHA POR DEFINIR';
+
+    let parsedDate = null;
+
+    if (rawDate instanceof Date && !Number.isNaN(rawDate.getTime())) {
+      parsedDate = rawDate;
+    } else if (typeof rawDate === 'string') {
+      const trimmed = rawDate.trim();
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const [year, month, day] = trimmed.split('-').map(Number);
+        parsedDate = new Date(year, month - 1, day);
+      } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+        const [day, month, year] = trimmed.split('/').map(Number);
+        parsedDate = new Date(year, month - 1, day);
+      } else if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+        const [day, month, year] = trimmed.split('-').map(Number);
+        parsedDate = new Date(year, month - 1, day);
+      } else {
+        const fallback = new Date(trimmed);
+        if (!Number.isNaN(fallback.getTime())) parsedDate = fallback;
+      }
+    }
+
+    if (!parsedDate || Number.isNaN(parsedDate.getTime())) return 'FECHA POR DEFINIR';
+
+    return parsedDate.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short'
+    }).toUpperCase();
+  };
+
+  const SeatIcon = ({ size = 22 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 3a2 2 0 0 0-2 2v6h14V5a2 2 0 0 0-2-2H7Z" />
+      <path d="M4 12a2 2 0 0 0-2 2v3h2v3h2v-3h12v3h2v-3h2v-3a2 2 0 0 0-2-2H4Z" />
+    </svg>
+  );
 
   useEffect(() => {
     // Si estamos en medio de una compra o en la confirmación, no redirigimos automáticamente
@@ -893,25 +935,24 @@ export default function App() {
                               </div>
                               <p className="movie-summary">{featuredMovie.descripcion}</p>
                               
-                              {/* Horarios y Disponibilidad */}
+                              {/* Estado de Disponibilidad */}
                               <div style={{marginTop:'16px'}}>
-                                <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>Horarios Disponibles:</span>
-                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                                  {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).slice(0, 4).map(s => (
-                                    <span key={s.id} className="featured-badge" style={{background:'var(--secondary)', margin:0, fontSize:'0.6rem'}}>
-                                      {s.hora.slice(0,5)}
-                                    </span>
-                                  ))}
-                                  {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length === 0 && (
-                                    <span className="movie-sub-meta" style={{color:'#999'}}>Próximamente</span>
-                                  )}
-                                </div>
+                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? (
+                                  <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                    <span className="admit-one" style={{fontSize:'0.6rem', color:'var(--secondary)', fontWeight:'700'}}>EN CARTELERA</span>
+                                    <span className="movie-sub-meta" style={{color:'black', fontSize:'0.7rem'}}>¡Reserva tus boletas ahora!</span>
+                                  </div>
+                                ) : (
+                                  <span className="movie-sub-meta" style={{color:'#999', fontStyle:'italic'}}>Próximamente en nuestra sala</span>
+                                )}
                               </div>
                             </div>
                             <div style={{display:'flex', flexDirection:'column', gap:'12px', alignItems:'flex-end'}}>
-                              <div className="rating-box" style={{width:'auto', padding:'0 10px', height:'30px', fontSize:'0.7rem', borderColor:'var(--primary)', color:'var(--primary)'}}>
-                                {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 ? 'DISPONIBLE' : 'AGOTADO'}
-                              </div>
+                              {allShowtimes.filter(s => s.pelicula_id === featuredMovie.id).length > 0 && (
+                                <button className="btn-marquee" style={{width:'auto', padding:'15px 30px', background:'var(--primary)', color:'white', borderColor:'var(--primary)'}} onClick={() => { handleSelectMovie(featuredMovie); setTimeout(() => setShowHallModal(true), 300); }}>
+                                  COMPRAR BOLETA
+                                </button>
+                              )}
                               <button className="btn-marquee" style={{width:'auto', padding:'15px 30px'}} onClick={() => handleSelectMovie(featuredMovie)}>
                                 VER MÁS
                               </button>
@@ -939,21 +980,10 @@ export default function App() {
                                 <p className="movie-sub-meta">
                                   {Array.isArray(m.genero) ? m.genero.join(', ') : m.genero} • {m.duracion} MIN
                                 </p>
-                                
-                                {/* Horarios Cortos */}
-                                <div style={{marginTop:'12px'}}>
-                                  <div style={{display:'flex', gap:'4px', flexWrap:'wrap'}}>
-                                    {allShowtimes.filter(s => s.pelicula_id === m.id).slice(0, 3).map(s => (
-                                      <span key={s.id} style={{fontSize:'0.6rem', padding:'2px 6px', border:'1px solid var(--secondary)', color:'var(--secondary)', fontWeight:'700'}}>
-                                        {s.hora.slice(0,5)}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
                               </div>
                               <div style={{marginTop:'16px'}}>
                                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
-                                  <span className="admit-one" style={{fontSize:'0.5rem'}}>
+                                  <span className="admit-one" style={{fontSize:'0.5rem', color: allShowtimes.filter(s => s.pelicula_id === m.id).length > 0 ? 'var(--secondary)' : '#999'}}>
                                     {allShowtimes.filter(s => s.pelicula_id === m.id).length > 0 ? 'EN CARTELERA' : 'PRÓXIMAMENTE'}
                                   </span>
                                 </div>
@@ -977,10 +1007,10 @@ export default function App() {
             </div>
           )}
 
-          {/* SHOWTIMES */}
+          {/* MOVIE DETAIL (info detallada) */}
           {page === 'showtimes' && (
             <div className="gold-frame showtimes-frame" style={{marginTop:'40px', background:'white'}}>
-              <span className="pre-title">Horarios</span>
+              <span className="pre-title">Ficha Técnica</span>
               <h2 className="main-title showtimes-title">{selectedMovie.titulo}</h2>
               <div className="showtimes-content">
                 <div className="poster-frame showtimes-poster">
@@ -1000,23 +1030,19 @@ export default function App() {
                   
                   <p className="movie-summary" style={{fontSize:'1.5rem', marginBottom:'32px'}}>{selectedMovie.descripcion}</p>
                   
-                  <div className="showtimes-timeslots">
-                    {showtimes.length > 0 ? (
-                      showtimes.map(s => (
-                        <div key={s.id} className="time-slot evening" onClick={() => handleSelectShowtime(s)}>
-                          <span className="time-label">{s.fecha}</span>
-                          <span className="time-value">{s.hora}</span>
-                          <span className="time-label" style={{marginTop:'8px'}}>${parseFloat(s.precio).toLocaleString()}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{gridColumn:'1 / -1', padding:'40px', textAlign:'center', border:'1px dashed var(--secondary)'}}>
-                        <p className="movie-meta-title" style={{fontSize:'1.2rem', color:'var(--secondary)'}}>AÚN NO HAY FUNCIONES PROGRAMADAS</p>
-                        <p className="movie-sub-meta" style={{color:'black', marginTop:'8px'}}>Vuelve pronto para consultar los horarios de esta película.</p>
-                      </div>
+                  <div style={{display:'flex', gap:'16px', marginTop:'40px'}}>
+                    <button className="btn-marquee btn-volver" style={{flex:1}} onClick={() => setPage('movies')}>VOLVER</button>
+                    {showtimes.length > 0 && (
+                      <button className="btn-marquee" style={{flex:2}} onClick={() => setShowHallModal(true)}>COMPRAR BOLETA</button>
                     )}
                   </div>
-                  <button className="btn-marquee btn-volver" style={{marginTop:'32px'}} onClick={() => setPage('movies')}>VOLVER</button>
+
+                  {showtimes.length === 0 && (
+                    <div style={{marginTop:'32px', padding:'40px', textAlign:'center', border:'1px dashed var(--secondary)'}}>
+                      <p className="movie-meta-title" style={{fontSize:'1.2rem', color:'var(--secondary)'}}>AÚN NO HAY FUNCIONES PROGRAMADAS</p>
+                      <p className="movie-sub-meta" style={{color:'black', marginTop:'8px'}}>Vuelve pronto para consultar los horarios de esta película.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1034,20 +1060,20 @@ export default function App() {
                 
                 {/* Leyenda de asientos */}
                 <div className="seat-legend" style={{display:'flex', justifyContent:'center', gap:'24px', marginBottom:'24px', flexWrap:'wrap'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                    <div style={{width:'24px', height:'24px', background:'#4a4a4a', borderRadius:'4px'}}></div>
+                  <div className="seat-legend-item" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span className="seat-icon-chip disponible"><SeatIcon size={18} /></span>
                     <span className="movie-sub-meta" style={{color:'black'}}>Disponible</span>
                   </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                    <div style={{width:'24px', height:'24px', background:'var(--primary)', borderRadius:'4px'}}></div>
+                  <div className="seat-legend-item" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span className="seat-icon-chip selected"><SeatIcon size={18} /></span>
                     <span className="movie-sub-meta" style={{color:'black'}}>Seleccionado</span>
                   </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                    <div style={{width:'24px', height:'24px', background:'#a00', borderRadius:'4px'}}></div>
+                  <div className="seat-legend-item" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span className="seat-icon-chip vendido"><SeatIcon size={18} /></span>
                     <span className="movie-sub-meta" style={{color:'black'}}>Ocupado</span>
                   </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                    <div style={{width:'24px', height:'24px', background:'#ff9800', borderRadius:'4px'}}></div>
+                  <div className="seat-legend-item" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span className="seat-icon-chip bloqueado"><SeatIcon size={18} /></span>
                     <span className="movie-sub-meta" style={{color:'black'}}>Bloqueado</span>
                   </div>
                 </div>
@@ -1073,31 +1099,37 @@ export default function App() {
                     const sortedRows = Object.keys(seatsByRow).sort();
                     
                     return sortedRows.map(fila => (
-                      <div key={fila} style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                        <span className="admit-one" style={{width:'20px', textAlign:'center', fontSize:'0.8rem'}}>{fila}</span>
-                        <div style={{display:'flex', gap:'6px'}}>
+                      <div key={fila} className="seat-row">
+                        <span className="admit-one seat-row-label">{fila}</span>
+                        <div className="seat-row-track">
                           {seatsByRow[fila]
                             .sort((a, b) => a.columna - b.columna)
-                            .map(seat => (
-                              <div 
+                            .map(seat => {
+                              const isBlocked = seat.estado === 'vendido' || seat.estado === 'bloqueado';
+                              const isSelected = selectedSeats.includes(seat.asiento_id);
+                              return (
+                              <button
                                 key={seat.mapping_id} 
-                                className={`seat-stitch ${seat.estado} ${selectedSeats.includes(seat.asiento_id) ? 'selected' : ''}`}
-                                onClick={() => seat.estado !== 'vendido' && seat.estado !== 'bloqueado' && toggleSeat(seat.asiento_id)}
+                                type="button"
+                                className={`seat-stitch ${seat.estado} ${isSelected ? 'selected' : ''}`}
+                                onClick={() => !isBlocked && toggleSeat(seat.asiento_id)}
                                 style={{
-                                  width: '36px',
-                                  height: '36px',
+                                  width: '42px',
+                                  minHeight: '44px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: seat.estado === 'vendido' || seat.estado === 'bloqueado' ? 'not-allowed' : 'pointer',
+                                  cursor: isBlocked ? 'not-allowed' : 'pointer',
                                   opacity: seat.estado === 'vendido' ? 0.5 : 1
                                 }}
+                                aria-label={`Asiento ${fila}${seat.columna}`}
                               >
-                                {seat.columna}
-                              </div>
-                            ))}
+                                <SeatIcon size={22} />
+                                <span className="seat-number">{seat.columna}</span>
+                              </button>
+                            )})}
                         </div>
-                        <span className="admit-one" style={{width:'20px', textAlign:'center', fontSize:'0.8rem'}}>{fila}</span>
+                        <span className="admit-one seat-row-label">{fila}</span>
                       </div>
                     ));
                   })()}
@@ -1500,6 +1532,86 @@ export default function App() {
       </footer>
 
       {/* MODALS */}
+      {showHallModal && selectedMovie && (
+        <div className="modal-overlay">
+          <div className="gold-frame hall-modal-frame" style={{background:'white', width:'95%', maxWidth:'650px', padding:'40px', maxHeight:'85vh', overflowY:'auto'}}>
+            <div style={{textAlign:'center', marginBottom:'32px'}}>
+              <span className="pre-title">Paso 1: Selección de Sala</span>
+              <h3 className="movie-meta-title" style={{fontSize:'1.8rem'}}>{selectedMovie.titulo}</h3>
+              <p className="movie-sub-meta" style={{color:'var(--secondary)', fontWeight:'700'}}>Escoge la sala y el horario de tu preferencia.</p>
+            </div>
+            
+            <div className="hall-selection-grid" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'24px'}}>
+              {showtimes.map(s => (
+                <div 
+                  key={s.id} 
+                  className="hall-selection-card" 
+                  onClick={() => {
+                    handleSelectShowtime(s);
+                    setShowHallModal(false);
+                  }}
+                  style={{
+                    cursor:'pointer',
+                    padding:'28px',
+                    border:'2px solid var(--accent)',
+                    display:'flex',
+                    flexDirection:'column',
+                    gap:'16px',
+                    transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background:'var(--surface-container-low)',
+                    position:'relative',
+                    overflow:'hidden',
+                    borderRadius:'8px'
+                  }}
+                >
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'4px'}}>
+                    <span className="admit-one" style={{fontSize:'0.65rem', color:'var(--primary)', letterSpacing:'0.1em'}}>SALA / AUDITORIO</span>
+                    <span className="movie-meta-title" style={{fontSize:'1.2rem', color:'var(--primary)'}}>{s.sala}</span>
+                  </div>
+                  
+                  <div style={{borderTop:'1px dashed var(--accent)', paddingTop:'16px', display:'flex', justifyContent:'space-between', alignItems:'flex-end'}}>
+                    <div style={{display:'flex', flexDirection:'column', gap:'4px'}}>
+                      <span className="pre-title" style={{fontSize:'0.55rem', textAlign:'left', color:'var(--secondary)'}}>FECHA Y HORARIO</span>
+                      <div style={{display:'flex', flexDirection:'column'}}>
+                        <span className="movie-sub-meta" style={{color:'black', fontStyle:'normal', fontWeight:'800', fontSize:'0.9rem', lineHeight:'1.2'}}>
+                          {formatShowtimeDate(s.fecha)}
+                        </span>
+                        <span className="movie-meta-title" style={{color:'var(--secondary)', fontSize:'1.1rem', marginTop:'2px'}}>
+                          {s.hora.slice(0, 5)} HRS
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right', display:'flex', flexDirection:'column', gap:'4px'}}>
+                      <span className="pre-title" style={{fontSize:'0.55rem', color:'var(--secondary)'}}>PRECIO</span>
+                      <p className="movie-meta-title" style={{fontSize:'1.3rem', color:'black', margin:0}}>
+                        <span style={{fontSize:'0.8rem', verticalAlign:'middle', marginRight:'2px'}}>$</span>
+                        {parseFloat(s.precio).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Decorative corner element */}
+                  <div style={{
+                    position:'absolute',
+                    top:'-10px',
+                    right:'-10px',
+                    width:'20px',
+                    height:'20px',
+                    background:'var(--accent)',
+                    transform:'rotate(45deg)',
+                    opacity:0.3
+                  }}></div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{marginTop:'32px', textAlign:'center'}}>
+              <button className="btn-marquee btn-volver" style={{width:'auto', padding:'10px 40px'}} onClick={() => setShowHallModal(false)}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCategoriaModal && (
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'400px', padding:'40px'}}>

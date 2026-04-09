@@ -403,6 +403,87 @@ input:focus, select:focus {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hall-selection-card:hover {
+  border-color: var(--primary) !important;
+  background: var(--surface-container-high) !important;
+}
+
+.hall-selection-card:active {
+  transform: scale(0.98);
+}
+
+.hall-modal-frame {
+  width: min(95vw, 760px) !important;
+}
+
+.hall-selection-grid {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .hall-modal-frame {
+    width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    padding: 20px 14px !important;
+  }
+
+  .hall-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .hall-selection-card {
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .seat-row {
+    grid-template-columns: 16px 1fr 16px;
+    gap: 6px;
+  }
+
+  .seat-row-track {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .seat-stitch {
+    width: 34px !important;
+    min-height: 36px !important;
+  }
+
+  .seat-row-label {
+    width: 16px;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hall-modal-frame {
+    padding: 14px 10px !important;
+  }
+
+  .seat-row-track {
+    gap: 4px;
+  }
+
+  .seat-stitch {
+    width: 30px !important;
+    min-height: 32px !important;
+  }
+
+  .seat-number {
+    font-size: 0.45rem;
+  }
+
+  .seat-legend-item .movie-sub-meta {
+    font-size: 0.6rem !important;
+  }
 }
 
 /* Details and Showtimes */
@@ -529,49 +610,70 @@ input:focus, select:focus {
 }
 
 .seat-stitch {
-  aspect-ratio: 1;
-  border: 1px solid rgba(119, 90, 25, 0.4);
+  border: none;
+  background: transparent;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  gap: 2px;
+  font-size: 0.55rem;
   font-family: var(--font-headline);
-  color: rgba(119, 90, 25, 0.4);
+  color: #4a4a4a;
   cursor: pointer;
   transition: all 0.3s;
   border-radius: 4px;
+  padding: 0;
+}
+
+.seat-number {
+  font-size: 0.5rem;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.seat-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20px 1fr 20px;
+  align-items: center;
+  gap: 8px;
+}
+
+.seat-row-track {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.seat-row-label {
+  width: 20px;
+  text-align: center;
+  font-size: 0.8rem;
 }
 
 .seat-stitch:hover:not(.vendido):not(.bloqueado) { 
-  background: var(--primary-container); 
-  color: white; 
+  color: var(--primary-container); 
+  transform: translateY(-1px);
 }
 
 .seat-stitch.selected { 
-  background: var(--primary); 
-  color: white; 
-  border: none; 
-  box-shadow: 0 0 8px rgba(119, 90, 25, 0.5);
+  color: var(--primary);
 }
 
 .seat-stitch.vendido { 
-  background: #a00; 
-  color: rgba(255,255,255,0.5); 
+  color: #a00; 
   cursor: not-allowed; 
-  border-color: #800;
 }
 
 .seat-stitch.bloqueado { 
-  background: #ff9800; 
-  color: white; 
+  color: #ff9800; 
   cursor: not-allowed; 
-  border-color: #f57c00;
 }
 
 .seat-stitch.disponible {
-  background: #4a4a4a;
-  color: #ddd;
-  border-color: #666;
+  color: #4a4a4a;
 }
 
 .seats-container {
@@ -585,6 +687,35 @@ input:focus, select:focus {
   background: white;
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.1);
+}
+
+.seat-icon-chip {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.seat-icon-chip.disponible {
+  color: #4a4a4a;
+  background: rgba(74, 74, 74, 0.12);
+}
+
+.seat-icon-chip.selected {
+  color: var(--primary);
+  background: rgba(119, 90, 25, 0.12);
+}
+
+.seat-icon-chip.vendido {
+  color: #a00;
+  background: rgba(170, 0, 0, 0.12);
+}
+
+.seat-icon-chip.bloqueado {
+  color: #ff9800;
+  background: rgba(255, 152, 0, 0.16);
 }
 
 /* Visual Ticket Card */
