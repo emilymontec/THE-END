@@ -38,6 +38,8 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('sales'); // 'sales' | 'history' | 'reports' | 'users' | 'tarifas'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+  const [showSalaModal, setShowSalaModal] = useState(false);
+  const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const scannerRef = useRef(null);
   const selectedSeatsRef = useRef([]);
@@ -69,8 +71,6 @@ export default function App() {
 
   // Tarifas/Salas
   const [salas, setSalas] = useState([]);
-  const [showSalaModal, setShowSalaModal] = useState(false);
-  const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
 
   const showConfirm = (title, message, onConfirm) => {
     setConfirmModal({ show: true, title, message, onConfirm: () => { onConfirm(); setConfirmModal({ ...confirmModal, show: false }); } });
@@ -1029,7 +1029,7 @@ export default function App() {
                       <>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='sales' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('sales')}>Ventas</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='movies' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('movies')}>Películas</button>
-                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='tarifas' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('tarifas')}>Tarifas</button>
+                        <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='tarifas' ? 'var(--primary-container)' : ''}} onClick={() => { setAdminTab('tarifas'); loadSalas(); }}>Tarifas</button>
                         <button className="btn-marquee" style={{padding:'12px', fontSize:'0.7rem', background: adminTab==='users' ? 'var(--primary-container)' : ''}} onClick={() => setAdminTab('users')}>Personal</button>
                       </>
                     )}
