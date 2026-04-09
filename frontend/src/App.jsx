@@ -40,7 +40,9 @@ export default function App() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
   const [showSalaModal, setShowSalaModal] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
   const [salaForm, setSalaForm] = useState({ nombre: '', precio_base: '' });
+  const [guestForm, setGuestForm] = useState({ nombre: '', apellidos: '', email: '', password: '', banco: '', tarjeta: '', cvv: '' });
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const scannerRef = useRef(null);
   const selectedSeatsRef = useRef([]);
@@ -111,6 +113,10 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Si estamos en medio de una compra o en la confirmación, no redirigimos automáticamente
+    // Esto permite que el registro automático del Guest Checkout funcione sin interrupciones.
+    if (page === 'seats' || page === 'confirmation') return;
+
     if (role === 'admin') setPage('dashboard');
     else if (role === 'operario') setPage('validar');
     else setPage('movies');
@@ -209,6 +215,7 @@ export default function App() {
         password: '' 
       });
       localStorage.setItem('user', JSON.stringify(res.data));
+      setLoginForm({ email: '', password: '', nombre: '', apellidos: '' });
       showMsg('success', `BIENVENIDO ${res.data.nombre.toUpperCase()}`);
     } catch (err) {
       showMsg('error', 'CREDENCIALES INVÁLIDAS');
@@ -234,6 +241,7 @@ export default function App() {
         password: '' 
       });
       localStorage.setItem('user', JSON.stringify(res.data));
+      setLoginForm({ email: '', password: '', nombre: '', apellidos: '' });
       showMsg('success', 'CUENTA CREADA');
     } catch (err) {
       showMsg('error', 'EL EMAIL O USERNAME YA ESTÁ REGISTRADO');
@@ -447,6 +455,11 @@ export default function App() {
   };
 
   const handleProcessPayment = () => {
+    if (!user) {
+      setGuestForm({ nombre: '', apellidos: '', email: '', password: '', banco: '', tarjeta: '', cvv: '' });
+      setShowGuestModal(true);
+      return;
+    }
     showConfirm('CONFIRMAR COMPRA', `¿PROCEDER CON LA COMPRA DE ${selectedSeats.length} ASIENTO(S)? TOTAL: $${(selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString()}`, () => {
       setIsPaying(true);
       setTimeout(() => {
@@ -454,6 +467,57 @@ export default function App() {
         setIsPaying(false);
       }, 2000);
     });
+  };
+
+  const handleGuestCheckout = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // 1. Registro automático y pago en el backend
+      const res = await api.post('/tickets/guest-checkout', {
+        funcion_id: selectedShowtime.id,
+        asientos: selectedSeats,
+        userData: {
+          nombre: guestForm.nombre,
+          apellidos: guestForm.apellidos,
+          email: guestForm.email,
+          password: guestForm.password
+        },
+        paymentData: {
+          banco: guestForm.banco,
+          tarjeta: guestForm.tarjeta,
+          cvv: guestForm.cvv
+        }
+      });
+
+      // 2. Si todo sale bien, preparar el ticket y cambiar de página antes de loguear al usuario
+      // Esto evita que el useEffect del usuario reinicie el estado de la compra.
+      setLastTicket({
+        ...res.data.ticket,
+        movie: selectedMovie.titulo,
+        time: `${selectedShowtime.fecha} ${selectedShowtime.hora}`,
+        seats: seats.filter(s => selectedSeats.includes(s.asiento_id)).map(s => `${s.fila}${s.columna}`).join(', ')
+      });
+
+      showMsg('success', 'REGISTRO Y COMPRA EXITOSOS');
+      setShowGuestModal(false);
+      setGuestForm({ nombre: '', apellidos: '', email: '', password: '', banco: '', tarjeta: '', cvv: '' });
+      setPage('confirmation');
+
+      if (res.data.user) {
+        setUser(res.data.user);
+        setRole(res.data.user.rol);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+      }
+      
+      if (res.data.user?.rol === 'admin') loadStats();
+      if (res.data.user?.rol === 'cliente') loadMyPurchases();
+    } catch (err) {
+      console.error('Error en guest checkout:', err);
+      showMsg('error', err.response?.data?.error || 'ERROR EN EL PROCESO');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBuyTickets = async () => {
@@ -682,7 +746,7 @@ export default function App() {
             <span className={page === 'dashboard' || page === 'validar' ? 'active' : ''} onClick={() => setPage(role === 'admin' ? 'dashboard' : 'validar')}>Administración</span>
           )}
           {!user ? (
-            <button className="btn-marquee" style={{width:'auto', padding:'10px 20px', fontSize:'0.7rem'}} onClick={() => setPage('auth')}>ACCEDER</button>
+            <button className="btn-marquee" style={{width:'auto', padding:'10px 20px', fontSize:'0.7rem'}} onClick={() => { setPage('auth'); setLoginForm({ email: '', password: '', nombre: '', apellidos: '' }); }}>ACCEDER</button>
           ) : (
             <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
               <span className="admit-one" style={{fontSize:'0.7rem', opacity: 0.6}}>{user.rol.toUpperCase()}</span>
@@ -715,15 +779,15 @@ export default function App() {
                 <span className="pre-title">Taquilla</span>
                 <h3 className="movie-meta-title" style={{fontSize:'2rem'}}>{authMode === 'login' ? 'INICIAR SESIÓN' : 'REGISTRARSE'}</h3>
               </div>
-              <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{display:'flex', flexDirection:'column', gap:'20px'}}>
+              <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{display:'flex', flexDirection:'column', gap:'20px'}} autoComplete="off">
                 {authMode === 'register' && (
                   <>
-                    <input placeholder="NOMBRES" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} />
-                    <input placeholder="APELLIDOS" required value={loginForm.apellidos} onChange={e => setLoginForm({...loginForm, apellidos: e.target.value})} />
+                    <input placeholder="NOMBRES" required value={loginForm.nombre} onChange={e => setLoginForm({...loginForm, nombre: e.target.value})} autoComplete="off" />
+                    <input placeholder="APELLIDOS" required value={loginForm.apellidos} onChange={e => setLoginForm({...loginForm, apellidos: e.target.value})} autoComplete="off" />
                   </>
                 )}
-                <input type="text" placeholder="USUARIO / EMAIL" required value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
-                <input type="password" placeholder="CONTRASEÑA" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                <input type="text" placeholder="USUARIO / EMAIL" required value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} autoComplete="off" />
+                <input type="password" placeholder="CONTRASEÑA" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} autoComplete="new-password" />
                 <button type="submit" className="btn-marquee" style={{marginTop:'10px'}}>{authMode === 'login' ? 'ENTRAR AL CINE' : 'CREAR CUENTA'}</button>
                 <button type="button" style={{background:'transparent', border:'none', color:'var(--secondary)', cursor:'pointer', fontStyle:'italic'}} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
                   {authMode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
@@ -741,31 +805,31 @@ export default function App() {
                 <p className="movie-sub-meta" style={{color:'var(--primary)', fontWeight:'bold'}}>@{user.username}</p>
               </div>
               
-              <form onSubmit={handleUpdateProfile} style={{display:'flex', flexDirection:'column', gap:'20px'}}>
+              <form onSubmit={handleUpdateProfile} style={{display:'flex', flexDirection:'column', gap:'20px'}} autoComplete="off">
                 <div style={{display:'flex', gap:'15px'}}>
                   <div style={{flex:1}}>
                     <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NOMBRES</label>
-                    <input placeholder="NOMBRES" required value={profileForm.nombre} onChange={e => setProfileForm({...profileForm, nombre: e.target.value})} />
+                    <input placeholder="NOMBRES" required value={profileForm.nombre} onChange={e => setProfileForm({...profileForm, nombre: e.target.value})} autoComplete="off" />
                   </div>
                   <div style={{flex:1}}>
                     <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>APELLIDOS</label>
-                    <input placeholder="APELLIDOS" required value={profileForm.apellidos} onChange={e => setProfileForm({...profileForm, apellidos: e.target.value})} />
+                    <input placeholder="APELLIDOS" required value={profileForm.apellidos} onChange={e => setProfileForm({...profileForm, apellidos: e.target.value})} autoComplete="off" />
                   </div>
                 </div>
 
                 <div>
                   <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NOMBRE DE USUARIO (AUTOMÁTICO)</label>
-                  <input value={`@${profileForm.nombre.toLowerCase()}_${profileForm.apellidos.toLowerCase()}`.replace(/\s+/g, '')} disabled style={{background:'#f5f5f5', color:'#888', fontStyle:'italic'}} />
+                  <input value={`@${profileForm.nombre.toLowerCase()}_${profileForm.apellidos.toLowerCase()}`.replace(/\s+/g, '')} disabled style={{background:'#f5f5f5', color:'#888', fontStyle:'italic'}} autoComplete="off" />
                 </div>
 
                 <div>
                   <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>CORREO ELECTRÓNICO</label>
-                  <input type="email" placeholder="EMAIL" required value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})} />
+                  <input type="email" placeholder="EMAIL" required value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})} autoComplete="off" />
                 </div>
 
                 <div>
                   <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NUEVA CONTRASEÑA (OPCIONAL)</label>
-                  <input type="password" placeholder="DEJAR EN BLANCO PARA NO CAMBIAR" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} />
+                  <input type="password" placeholder="DEJAR EN BLANCO PARA NO CAMBIAR" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} autoComplete="new-password" />
                 </div>
 
                 <div style={{display:'flex', gap:'15px', marginTop:'10px'}}>
@@ -1354,23 +1418,23 @@ export default function App() {
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'500px', padding:'40px'}}>
             <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{movieForm.id ? 'ACTUALIZAR PELÍCULA' : 'REGISTRAR PELÍCULA'}</h3>
-            <form onSubmit={handleSaveMovie} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
-              <input placeholder="TÍTULO" required value={movieForm.titulo} onChange={e => setMovieForm({...movieForm, titulo: e.target.value})} />
-              <input placeholder="GÉNERO" required value={movieForm.genero} onChange={e => setMovieForm({...movieForm, genero: e.target.value})} />
+            <form onSubmit={handleSaveMovie} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
+              <input placeholder="TÍTULO" required value={movieForm.titulo} onChange={e => setMovieForm({...movieForm, titulo: e.target.value})} autoComplete="off" />
+              <input placeholder="GÉNERO" required value={movieForm.genero} onChange={e => setMovieForm({...movieForm, genero: e.target.value})} autoComplete="off" />
               <div style={{display:'flex', gap:'16px'}}>
-                <input placeholder="DURACIÓN (MIN)" required type="number" value={movieForm.duracion} onChange={e => setMovieForm({...movieForm, duracion: e.target.value})} />
-                <input placeholder="CLASIFICACIÓN" required value={movieForm.clasificacion} onChange={e => setMovieForm({...movieForm, clasificacion: e.target.value})} />
+                <input placeholder="DURACIÓN (MIN)" required type="number" value={movieForm.duracion} onChange={e => setMovieForm({...movieForm, duracion: e.target.value})} autoComplete="off" />
+                <input placeholder="CLASIFICACIÓN" required value={movieForm.clasificacion} onChange={e => setMovieForm({...movieForm, clasificacion: e.target.value})} autoComplete="off" />
               </div>
               <div style={{border:'1px dashed var(--secondary)', padding:'15px'}}>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>ADJUNTAR PÓSTER (OPCIONAL)</span>
-                <input type="file" id="movie-image-upload" accept="image/*" style={{border:'none', padding:0}} />
+                <input type="file" id="movie-image-upload" accept="image/*" style={{border:'none', padding:0}} autoComplete="off" />
               </div>
-              <input placeholder="O URL DEL PÓSTER" value={movieForm.imagen_url} onChange={e => setMovieForm({...movieForm, imagen_url: e.target.value})} />
+              <input placeholder="O URL DEL PÓSTER" value={movieForm.imagen_url} onChange={e => setMovieForm({...movieForm, imagen_url: e.target.value})} autoComplete="off" />
               <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px', background:'var(--surface-container-high)'}}>
                 <input type="checkbox" id="movie-destacada" checked={movieForm.destacada} onChange={e => setMovieForm({...movieForm, destacada: e.target.checked})} style={{width:'auto'}} />
                 <label htmlFor="movie-destacada" className="admit-one" style={{fontSize:'0.7rem', cursor:'pointer'}}>PELÍCULA DESTACADA (PÁGINA PRINCIPAL)</label>
               </div>
-              <textarea placeholder="SINOPSIS" value={movieForm.descripcion} onChange={e => setMovieForm({...movieForm, descripcion: e.target.value})} rows="4" />
+              <textarea placeholder="SINOPSIS" value={movieForm.descripcion} onChange={e => setMovieForm({...movieForm, descripcion: e.target.value})} rows="4" autoComplete="off" />
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
                 <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowMovieModal(false)}>CANCELAR</button>
                 <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
@@ -1384,10 +1448,10 @@ export default function App() {
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'500px', padding:'40px'}}>
             <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>REGISTRO DE PERSONAL</h3>
-            <form onSubmit={handleSaveUser} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
-              <input placeholder="NOMBRE" required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} />
-              <input placeholder="IDENTIDAD / EMAIL" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
-              <input placeholder="CÓDIGO DE SEGURIDAD" required type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
+            <form onSubmit={handleSaveUser} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
+              <input placeholder="NOMBRE" required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} autoComplete="off" />
+              <input placeholder="IDENTIDAD / EMAIL" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} autoComplete="off" />
+              <input placeholder="CÓDIGO DE SEGURIDAD" required type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} autoComplete="new-password" />
               <select value={userForm.rol} onChange={e => setUserForm({...userForm, rol: e.target.value})} style={{padding:'15px', border:'1px solid var(--accent)'}}>
                 <option value="operario">Operario (Personal)</option>
                 <option value="admin">Administrador</option>
@@ -1405,14 +1469,14 @@ export default function App() {
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'450px', padding:'40px'}}>
             <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>AGREGAR HORARIO</h3>
-            <form onSubmit={handleSaveShowtime} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+            <form onSubmit={handleSaveShowtime} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>FECHA</span>
-                <input type="date" required value={showtimeForm.fecha} onChange={e => setShowtimeForm({...showtimeForm, fecha: e.target.value})} />
+                <input type="date" required value={showtimeForm.fecha} onChange={e => setShowtimeForm({...showtimeForm, fecha: e.target.value})} autoComplete="off" />
               </div>
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>HORA</span>
-                <input type="time" required value={showtimeForm.hora} onChange={e => setShowtimeForm({...showtimeForm, hora: e.target.value})} />
+                <input type="time" required value={showtimeForm.hora} onChange={e => setShowtimeForm({...showtimeForm, hora: e.target.value})} autoComplete="off" />
               </div>
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>SALA</span>
@@ -1440,7 +1504,7 @@ export default function App() {
               </div>
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>PRECIO BOLETA</span>
-                <input type="number" required value={showtimeForm.precio} onChange={e => setShowtimeForm({...showtimeForm, precio: e.target.value})} />
+                <input type="number" required value={showtimeForm.precio} onChange={e => setShowtimeForm({...showtimeForm, precio: e.target.value})} autoComplete="off" />
               </div>
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
                 <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowShowtimeModal(false)}>CANCELAR</button>
@@ -1455,18 +1519,70 @@ export default function App() {
         <div className="modal-overlay">
           <div className="gold-frame" style={{background:'white', width:'90%', maxWidth:'450px', padding:'40px'}}>
             <h3 className="movie-meta-title" style={{marginBottom:'24px'}}>{salaForm.id ? 'EDITAR SALA' : 'NUEVA SALA'}</h3>
-            <form onSubmit={handleSaveSala} style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+            <form onSubmit={handleSaveSala} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>NOMBRE DE LA SALA</span>
-                <input placeholder="Ej: Sala IMAX" required value={salaForm.nombre} onChange={e => setSalaForm({...salaForm, nombre: e.target.value})} />
+                <input placeholder="Ej: Sala IMAX" required value={salaForm.nombre} onChange={e => setSalaForm({...salaForm, nombre: e.target.value})} autoComplete="off" />
               </div>
               <div>
                 <span className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'8px'}}>PRECIO BASE ($)</span>
-                <input type="number" placeholder="Ej: 15000" required value={salaForm.precio_base} onChange={e => setSalaForm({...salaForm, precio_base: e.target.value})} />
+                <input type="number" placeholder="Ej: 15000" required value={salaForm.precio_base} onChange={e => setSalaForm({...salaForm, precio_base: e.target.value})} autoComplete="off" />
               </div>
               <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
                 <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowSalaModal(false)}>CANCELAR</button>
                 <button type="submit" className="btn-marquee" style={{flex:1}}>GUARDAR</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showGuestModal && (
+        <div className="modal-overlay">
+          <div className="gold-frame" style={{background:'white', width:'95%', maxWidth:'600px', padding:'40px', maxHeight:'90vh', overflowY:'auto'}}>
+            <div style={{textAlign:'center', marginBottom:'24px'}}>
+              <span className="pre-title">Paso Final</span>
+              <h3 className="movie-meta-title" style={{fontSize:'1.8rem'}}>REGISTRO Y PAGO</h3>
+              <p className="movie-sub-meta" style={{color:'var(--secondary)', fontWeight:'700'}}>Se creará una cuenta automáticamente con tus datos.</p>
+            </div>
+            
+            <form onSubmit={handleGuestCheckout} style={{display:'flex', flexDirection:'column', gap:'16px'}} autoComplete="off">
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>NOMBRES</label>
+                  <input placeholder="Ej: Juan" required value={guestForm.nombre} onChange={e => setGuestForm({...guestForm, nombre: e.target.value})} autoComplete="off" />
+                </div>
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>APELLIDOS</label>
+                  <input placeholder="Ej: Pérez" required value={guestForm.apellidos} onChange={e => setGuestForm({...guestForm, apellidos: e.target.value})} autoComplete="off" />
+                </div>
+              </div>
+              
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>CORREO ELECTRÓNICO</label>
+                  <input type="email" placeholder="email@ejemplo.com" required value={guestForm.email} onChange={e => setGuestForm({...guestForm, email: e.target.value})} autoComplete="off" />
+                </div>
+                <div>
+                  <label className="admit-one" style={{fontSize:'0.6rem', display:'block', marginBottom:'5px'}}>CONTRASEÑA PARA TU CUENTA</label>
+                  <input type="password" placeholder="Mínimo 6 caracteres" required value={guestForm.password} onChange={e => setGuestForm({...guestForm, password: e.target.value})} autoComplete="new-password" />
+                </div>
+              </div>
+
+              <div style={{marginTop:'16px', padding:'20px', background:'var(--surface-container-high)', border:'1px solid var(--primary-container)'}}>
+                <span className="admit-one" style={{fontSize:'0.7rem', display:'block', marginBottom:'15px', color:'var(--primary)'}}>INFORMACIÓN BANCARIA (SIMULADO)</span>
+                <div style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+                  <input placeholder="ENTIDAD BANCARIA" required value={guestForm.banco} onChange={e => setGuestForm({...guestForm, banco: e.target.value})} autoComplete="off" />
+                  <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'16px'}}>
+                    <input placeholder="NÚMERO DE TARJETA" required maxLength="16" value={guestForm.tarjeta} onChange={e => setGuestForm({...guestForm, tarjeta: e.target.value})} autoComplete="off" />
+                    <input placeholder="CVV" required type="password" maxLength="3" value={guestForm.cvv} onChange={e => setGuestForm({...guestForm, cvv: e.target.value})} autoComplete="off" />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{display:'flex', gap:'16px', marginTop:'16px'}}>
+                <button type="button" className="btn-marquee" style={{background:'var(--secondary)', flex:1}} onClick={() => setShowGuestModal(false)}>CANCELAR</button>
+                <button type="submit" className="btn-marquee" style={{flex:1}}>PAGAR ${ (selectedSeats.length * parseFloat(selectedShowtime.precio)).toLocaleString() }</button>
               </div>
             </form>
           </div>

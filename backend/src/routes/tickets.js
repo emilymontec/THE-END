@@ -4,6 +4,31 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
+// Función auxiliar para generar un username único (copiada de users.js)
+async function generateUniqueUsername(nombre, apellidos, userId = null) {
+  const baseUsername = `${nombre}_${apellidos}`.toLowerCase().replace(/\s+/g, '');
+  let username = baseUsername;
+  let counter = 1;
+  let isUnique = false;
+
+  while (!isUnique) {
+    const query = userId 
+      ? 'SELECT id FROM usuarios WHERE username = $1 AND id != $2'
+      : 'SELECT id FROM usuarios WHERE username = $1';
+    const params = userId ? [username, userId] : [username];
+    
+    const result = await db.query(query, params);
+    
+    if (result.rows.length === 0) {
+      isUnique = true;
+    } else {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+  }
+  return username;
+}
+
 // 1. Generación de tiquete con código único
 router.post('/', async (req, res) => {
   const { funcion_id, asientos, usuario_id, es_taquilla } = req.body;
@@ -51,6 +76,72 @@ router.post('/', async (req, res) => {
     res.json({ id: ticketId, codigo, total, estado: 'activo' });
   } catch (e) {
     await db.query('ROLLBACK');
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// 1.5 Registro y Compra (Guest Checkout)
+router.post('/guest-checkout', async (req, res) => {
+  const { funcion_id, asientos, userData, paymentData } = req.body;
+  const { nombre, apellidos, email, password } = userData;
+
+  try {
+    await db.query('BEGIN');
+
+    // 1. Crear el usuario automáticamente
+    const normalizedEmail = email.toLowerCase().trim();
+    const username = await generateUniqueUsername(nombre, apellidos);
+    
+    const userResult = await db.query(
+      'INSERT INTO usuarios(nombre, apellidos, email, username, password, rol) VALUES($1, $2, $3, $4, $5, $6) RETURNING id, nombre, apellidos, email, username, rol',
+      [nombre, apellidos, normalizedEmail, username, password, 'cliente']
+    );
+    const newUser = userResult.rows[0];
+
+    // 2. Procesar el tiquete (Misma lógica que POST /)
+    const funcResult = await db.query('SELECT precio FROM funciones WHERE id = $1', [funcion_id]);
+    if (funcResult.rows.length === 0) throw new Error('Función no encontrada');
+    const precio = funcResult.rows[0].precio;
+
+    for (let a of asientos) {
+      const check = await db.query(
+        `SELECT ocupado FROM funcion_asiento WHERE funcion_id=$1 AND asiento_id=$2 FOR UPDATE`,
+        [funcion_id, a]
+      );
+      if (check.rows.length === 0) throw new Error('Asiento inexistente');
+      if (check.rows[0].ocupado) throw new Error('Asiento ya vendido o reservado');
+    }
+
+    const codigo = uuidv4().split('-')[0].toUpperCase();
+    const total = asientos.length * precio;
+    
+    const ticketResult = await db.query(
+      'INSERT INTO tiquetes(codigo, funcion_id, usuario_id, total, estado, es_taquilla) VALUES($1, $2, $3, $4, $5, $6) RETURNING *',
+      [codigo, funcion_id, newUser.id, total, 'activo', false]
+    );
+    const ticketId = ticketResult.rows[0].id;
+
+    for (let a of asientos) {
+      await db.query(
+        'UPDATE funcion_asiento SET ocupado = TRUE, bloqueado_hasta = NULL WHERE funcion_id=$1 AND asiento_id=$2',
+        [funcion_id, a]
+      );
+      await db.query(
+        'INSERT INTO detalle_tiquete(tiquete_id, asiento_id, precio_unitario) VALUES($1, $2, $3)',
+        [ticketId, a, precio]
+      );
+    }
+
+    await db.query('COMMIT');
+    res.json({ 
+      user: newUser, 
+      ticket: { id: ticketId, codigo, total, estado: 'activo' } 
+    });
+  } catch (e) {
+    await db.query('ROLLBACK');
+    if (e.message.includes('usuarios_email_key')) {
+      return res.status(400).json({ error: 'El email ya está registrado. Por favor, inicia sesión.' });
+    }
     res.status(400).json({ error: e.message });
   }
 });
