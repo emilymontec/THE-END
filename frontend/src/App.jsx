@@ -503,6 +503,11 @@ export default function App() {
     if (role === 'admin') return; // Admin solo observa
     if (!selectedShowtime) return;
     if (selectedSeats.includes(seatId)) {
+      try {
+        await api.post(`/showtimes/${selectedShowtime.id}/unlock-seats`, { seats: [seatId] });
+      } catch (err) {
+        console.error('Error al desbloquear el asiento:', err);
+      }
       setSelectedSeats(prev => prev.filter(id => id !== seatId));
       return;
     }

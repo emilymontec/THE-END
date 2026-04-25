@@ -63,6 +63,13 @@ router.post('/', async (req, res) => {
 // Obtener asientos de una función específica (con lógica de bloqueo temporal)
 router.get('/:id/seats', async (req, res) => {
   try {
+    // Liberar físicamente los asientos expirados para mantener la base de datos limpia
+    await db.query(`
+      UPDATE funcion_asiento 
+      SET bloqueado_hasta = NULL 
+      WHERE funcion_id = $1 AND bloqueado_hasta < CURRENT_TIMESTAMP
+    `, [req.params.id]);
+
     const query = `
       SELECT fa.id as mapping_id, 
              a.fila, a.columna, a.id as asiento_id,
@@ -103,6 +110,23 @@ router.post('/:id/lock-seats', async (req, res) => {
     }
     
     res.json({ message: 'Asientos bloqueados por 5 minutos' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Desbloquear asientos manualmente (cuando el usuario deselecciona o cancela)
+router.post('/:id/unlock-seats', async (req, res) => {
+  const { seats } = req.body;
+  const funcId = req.params.id;
+  try {
+    const query = `
+      UPDATE funcion_asiento 
+      SET bloqueado_hasta = NULL
+      WHERE funcion_id = $1 AND asiento_id = ANY($2) AND ocupado = FALSE
+    `;
+    await db.query(query, [funcId, seats]);
+    res.json({ message: 'Asientos liberados' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
