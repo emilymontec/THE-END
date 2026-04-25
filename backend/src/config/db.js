@@ -9,13 +9,14 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Configuración de la conexión a PostgreSQL (Nhost o Local)
-const dbUrl = process.env.NHOST_DB_URL;
-const isNhost = dbUrl && dbUrl.includes('nhost.run');
+// Configuración de la conexión a PostgreSQL (Supabase o Nhost)
+// Prioridad: SUPABASE_DB_URL > NHOST_DB_URL
+const dbUrl = process.env.SUPABASE_DB_URL || process.env.NHOST_DB_URL;
+const isRemote = dbUrl && (dbUrl.includes('supabase') || dbUrl.includes('nhost.run'));
 
 const pool = new Pool({
   connectionString: dbUrl,
-  ssl: isNhost ? { rejectUnauthorized: false } : false
+  ssl: isRemote ? { rejectUnauthorized: false } : false
 });
 
 // Probar conexión y sincronizar tablas
@@ -23,7 +24,7 @@ pool.connect(async (err, client, release) => {
   if (err) {
     return console.error('Error adquiriendo cliente:', err.stack);
   }
-  console.log('Conectado a la base de datos de Nhost (PostgreSQL)');
+  console.log('Conectado a la base de datos PostgreSQL');
   
   // Sincronizar tablas automáticamente al iniciar (Solo si no existen)
   try {
