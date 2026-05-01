@@ -9,10 +9,12 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Configuración de la conexión a PostgreSQL (Supabase o Nhost)
-// Prioridad: SUPABASE_DB_URL > NHOST_DB_URL
-const dbUrl = process.env.SUPABASE_DB_URL || process.env.NHOST_DB_URL;
-const isRemote = dbUrl && (dbUrl.includes('supabase') || dbUrl.includes('nhost.run'));
+const dbUrl = process.env.SUPABASE_DB_URL;
+if (!dbUrl) {
+  console.error('Error: SUPABASE_DB_URL is not set in environment variables');
+  process.exit(1);
+}
+const isRemote = dbUrl && dbUrl.includes('supabase');
 
 const pool = new Pool({
   connectionString: dbUrl,
