@@ -33,13 +33,6 @@ app.get("/", (_, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
-
-// Solo levantar servidor en local
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server → http://localhost:${PORT}`);
-  });
-}
-
-// Exportar para Vercel
-export default app;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server → http://localhost:${PORT}`);
+});
