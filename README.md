@@ -1,54 +1,93 @@
-# THE-END - Sistema de Gestión de Cine
+# THE-END
 
-## Descripción
+## Sistema de Gestión de Cine
+Aplicación web diseñada para optimizar la gestión de cines. Permite administrar películas, funciones, usuarios y ventas de tiquetes mediante una interfaz intuitiva y un sistema seguro de control de acceso.
 
-**THE-END** es una aplicación web completa para la gestión de un cine, que permite administrar películas, funciones, asientos y venta de tiquetes. El sistema incluye diferentes roles de usuario (administrador, operario y cliente) con funcionalidades específicas para cada uno.
+Además, incorpora selección interactiva de asientos, generación de códigos QR para validación de entradas y reportes administrativos en tiempo real.
 
-## Características Principales
 
-### Gestión de Películas:
-- Crear, editar y eliminar películas
-- Subir pósters de películas
-- Cambiar estado (activa/inactiva)
-- Marcar películas como destacadas
-- Filtrar por género y búsqueda por título
+## Características
 
-### Sistema de Tiquetes:
-- Selección interactiva de asientos
-- Bloqueo temporal de asientos durante la compra
-- Generación de códigos QR únicos
-- Descarga de tiquetes en formato PDF
-- Validación de tiquetes por código QR
+### Gestión de Películas
 
-### Gestión de Usuarios:
-- Registro y autenticación de usuarios
-- Tres roles: **Admin**, **Operario**, **Cliente**
-- Panel de administración de usuarios
-- Historial de accesos
+* Crear, editar y eliminar películas.
+* Subida de pósters.
+* Activar o desactivar películas.
+* Marcar películas como destacadas.
+* Filtrar por género.
+* Búsqueda por título.
 
-### Panel de Administración:
-- Estadísticas de ventas en tiempo real
-- Reportes por rango de fechas
-- Historial de todas las ventas
-- Gestión de funciones y horarios
+### Sistema de Tiquetes
 
-### Funciones:
-- Crear y gestionar funciones
-- Asignar salas y precios
-- Fechas y horarios flexibles
-- Estado de funciones (disponible/cancelada)
+* Selección interactiva de asientos.
+* Bloqueo temporal durante la compra.
+* Generación automática de códigos QR.
+* Descarga de tiquetes en PDF.
+* Validación de entradas mediante QR.
+
+### Gestión de Usuarios
+
+* Registro e inicio de sesión.
+* Control de acceso por roles.
+* Administración de usuarios.
+* Historial de accesos.
+
+### Panel Administrativo
+
+* Estadísticas de ventas en tiempo real.
+* Reportes por rango de fechas.
+* Historial completo de ventas.
+* Gestión de funciones y horarios.
+
+### Gestión de Funciones
+
+* Creación y edición de funciones.
+* Asignación de salas.
+* Configuración de precios.
+* Gestión de fechas y horarios.
+* Cancelación de funciones.
 
 ### Sistema de Asientos
-- 150 asientos organizados (15 filas × 10 columnas)
-- Visualización en tiempo real
-- Bloqueo automático durante la selección
-- Prevención de doble reserva
+
+* 150 asientos organizados en 15 filas × 10 columnas.
+* Visualización en tiempo real.
+* Bloqueo automático durante la selección.
+* Prevención de reservas duplicadas.
+
 
 ## Tecnologías Utilizadas
 
-- Frontend: React
-- Backend: Node.js + Express
-- Base de Datos: PostgreSQL
+| Capa | Tecnología |
+|--------|------------|
+| Frontend | React + Vite |
+| Backend | Node.js + Express.js |
+| Base de Datos | Supabase PostgreSQL |
+| Generación QR | QRCode |
+| PDF | PDFKit |
+| Despliegue | Render |
+
+
+## Arquitectura
+
+```text
+Cliente
+   │
+   ▼
+Frontend (React)
+   │
+   ▼
+API REST (Node.js + Express)
+   │
+   ▼
+PostgreSQL
+```
+
+
+## Requisitos
+
+- Node.js 18 o superior
+- Base de datos en Supabase
+- npm
 
 
 ## Instalación
@@ -79,108 +118,192 @@ npm install
 #### Backend (`backend/.env`)
 
 ```env
-# URL de conexión a PostgreSQL (Nhost)
-NHOST_DB_URL=postgresql://usuario:password@host:puerto/base_datos
-
-# Credenciales de administrador (opcional)
+SUPABASE_DB_URL=https://id.supabase.co
 ADMIN_USERNAME=admin@cinema.com
 ADMIN_PASSWORD=admin123
-
-# Puerto del servidor (opcional, por defecto 4000)
 PORT=4000
 ```
 
 #### Frontend (`frontend/.env`)
 
 ```env
-# URL del backend
 VITE_API_URL=http://localhost:4000
 ```
 
 ### 5. Configurar la base de datos
 
-Ejecuta el script SQL para crear las tablas:
+Ejecutar el script SQL:
 
 ```bash
 psql -U tu_usuario -d tu_base_datos -f entitys.sql
 ```
 
-## API Endpoints
+### 6. Iniciar el proyecto
+
+Backend:
+
+```bash
+cd backend
+npm start
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Aplicación disponible en:
+
+```text
+http://localhost:5173
+```
+
+
+## Variables de Entorno
+
+### Backend
+
+| Variable | Descripción |
+|-----------|------------|
+| SUPABASE_DB_URL | URL de conexión a Supabase PostgreSQL |
+| ADMIN_USERNAME | Usuario administrador inicial |
+| ADMIN_PASSWORD | Contraseña administrador inicial |
+| PORT | Puerto del servidor |
+
+### Frontend
+
+| Variable | Descripción |
+|-----------|------------|
+| VITE_API_URL | URL del backend |
+
+
+## APIs
 
 ### Películas (`/movies`)
-- `GET /movies` - Obtener todas las películas
-- `GET /movies/:id` - Obtener película por ID
-- `POST /movies` - Crear nueva película
-- `PUT /movies/:id` - Actualizar película
-- `DELETE /movies/:id` - Eliminar película
-- `PATCH /movies/:id/status` - Cambiar estado de película
+
+| Método | Ruta | Descripción |
+|---------|--------|------------|
+| GET | `/movies` | Obtener todas las películas |
+| GET | `/movies/:id` | Obtener película por ID |
+| POST | `/movies` | Crear película |
+| PUT | `/movies/:id` | Actualizar película |
+| DELETE | `/movies/:id` | Eliminar película |
+| PATCH | `/movies/:id/status` | Cambiar estado |
 
 ### Funciones (`/showtimes`)
-- `GET /showtimes` - Obtener todas las funciones
-- `GET /showtimes/:id` - Obtener función por ID
-- `GET /showtimes/:id/seats` - Obtener asientos de una función
-- `POST /showtimes` - Crear nueva función
-- `POST /showtimes/:id/lock-seats` - Bloquear asientos temporalmente
-- `DELETE /showtimes/:id` - Eliminar función
+
+| Método | Ruta | Descripción |
+|---------|--------|------------|
+| GET | `/showtimes` | Obtener funciones |
+| GET | `/showtimes/:id` | Obtener función por ID |
+| GET | `/showtimes/:id/seats` | Obtener asientos |
+| POST | `/showtimes` | Crear función |
+| POST | `/showtimes/:id/lock-seats` | Bloquear asientos |
+| DELETE | `/showtimes/:id` | Eliminar función |
 
 ### Tiquetes (`/tickets`)
-- `GET /tickets` - Obtener todos los tiquetes
-- `GET /tickets/stats/summary` - Obtener estadísticas de ventas
-- `GET /tickets/validate/:code` - Validar tiquete por código
-- `POST /tickets` - Crear nuevo tiquete
-- `POST /tickets/use/:code` - Marcar tiquete como usado
-- `DELETE /tickets/:id` - Cancelar tiquete
+
+| Método | Ruta | Descripción |
+|---------|--------|------------|
+| GET | `/tickets` | Obtener tiquetes |
+| GET | `/tickets/stats/summary` | Estadísticas de ventas |
+| GET | `/tickets/validate/:code` | Validar tiquete |
+| POST | `/tickets` | Crear tiquete |
+| POST | `/tickets/use/:code` | Marcar como usado |
+| DELETE | `/tickets/:id` | Cancelar tiquete |
+
+---
 
 ### Usuarios (`/users`)
-- `POST /users/login` - Iniciar sesión
-- `POST /users/register` - Registrar nuevo usuario
-- `GET /users/admin/users` - Obtener todos los usuarios (admin)
-- `POST /users/admin/users` - Crear usuario (admin)
-- `DELETE /users/admin/users/:id` - Eliminar usuario (admin)
+
+| Método | Ruta | Descripción |
+|---------|--------|------------|
+| POST | `/users/login` | Iniciar sesión |
+| POST | `/users/register` | Registrar usuario |
+| GET | `/users/admin/users` | Listar usuarios |
+| POST | `/users/admin/users` | Crear usuario |
+| DELETE | `/users/admin/users/:id` | Eliminar usuario |
 
 ### Upload (`/upload`)
-- `POST /upload` - Subir imagen
 
-## Roles de Usuario
+| Método | Ruta | Descripción |
+|---------|--------|------------|
+| POST | `/upload` | Subir imagen |
 
-### Administrador:
-- Acceso completo al panel de administración
-- Gestión de películas, funciones y usuarios
-- Visualización de estadísticas y reportes
-- Validación de tiquetes
 
-### Operario:
-- Validación de tiquetes
-- Venta de tiquetes en taquilla
-- Visualización de estadísticas básicas
+## Roles del Sistema
 
-### Cliente:
-- Visualización de películas
-- Compra de tiquetes en línea
-- Historial de compras
-- Descarga de tiquetes
+### Administrador
+
+* Gestión completa de películas.
+* Gestión de funciones.
+* Administración de usuarios.
+* Acceso a estadísticas.
+* Reportes de ventas.
+* Validación de tiquetes.
+
+### Operario
+
+* Venta de tiquetes.
+* Validación de entradas.
+* Consulta de estadísticas básicas.
+
+### Cliente
+
+* Visualización de cartelera.
+* Compra de tiquetes.
+* Selección de asientos.
+* Descarga de entradas.
+* Historial de compras.
 
 
 ## Seguridad
 
-- Autenticación de usuarios
-- Control de acceso basado en roles
-- Bloqueo temporal de asientos
-- Validación de tiquetes por código QR
-- CORS configurado
+* Autenticación de usuarios.
+* Control de acceso basado en roles.
+* Bloqueo temporal de asientos.
+* Prevención de reservas duplicadas.
+* Validación de tiquetes mediante QR.
+* Configuración de CORS.
+* Protección de rutas administrativas.
+
 
 ## Notas
 
-- El sistema crea automáticamente 150 asientos al iniciar si no existen
-- Los asientos se bloquean temporalmente durante la selección para evitar doble reserva
-- Los tiquetes generan códigos QR únicos para validación
+* El sistema genera automáticamente los 150 asientos si no existen.
+* Los asientos se bloquean temporalmente durante el proceso de compra.
+* Cada tiquete genera un código QR único para validación.
+* Las funciones pueden configurarse con diferentes precios y horarios.
 
+
+## Contribuciones
+
+1. Haz un fork del repositorio.
+2. Crea una rama para tu nueva funcionalidad:
+```bash
+git checkout -b feature/nueva-funcionalidad
+```
+3. Realiza tus cambios.
+4. Haz commit y push.
+5. Abre un Pull Request.
+
+---
 
 ## Licencia
 
-Este proyecto está bajo la Licencia ISC. Ver el archivo [LICENSE](LICENSE) para más detalles.
+Este proyecto está bajo la **Licencia ISC**.
 
-## Autores
+Consulta el archivo `LICENSE` para más información.
 
-- **Jailiss Goméz** - *Desarrollo inicial* - [GitHub](https://github.com/emilymontec)
-- **Emily Monterrosa** - *Desarrollo final* - [GitHub](https://github.com/jailisita)
+---
+
+## Equipo de Desarrollo
+
+| Integrante | Rol |	GitHub 
+|---|---|---|
+| Jemima Cerpa | Desarrollo Frontend | [jemcu](https://github.com/jemcu) |
+| Jailiss Gómez	| Diseño UX/UI | [jailisita](https://github.com/jailisita) |
+| Melany Tesillo | Desarrollo Frontend | [mptse](https://github.com/mptse) |
+| Emily Monterrosa | Desarrollo Backend | [emilymontec](https://github.com/emilymontec) |
