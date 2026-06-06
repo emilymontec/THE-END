@@ -1,309 +1,192 @@
-# THE-END
+<div align="center">
 
-## Sistema de Gestión de Cine
-Aplicación web diseñada para optimizar la gestión de cines. Permite administrar películas, funciones, usuarios y ventas de tiquetes mediante una interfaz intuitiva y un sistema seguro de control de acceso.
+# THE END
 
-Además, incorpora selección interactiva de asientos, generación de códigos QR para validación de entradas y reportes administrativos en tiempo real.
+<p align="center">
+  <strong>Movie Schedule and Box Office Management Application</strong>
+</p>
 
+<sub> Created by: </sub>
+<p align="center">
+  <a href="https://github.com/jailisita">Jailiss Gómez</a> ·
+  <a href="https://github.com/jemcu">Gemima Cerpa</a> ·
+  <a href="https://github.com/mptse">Melany Tesillo</a> ·
+  <a href="https://github.com/emilymontec">Emily Monterrosa</a>
+</p>
 
-## Características
+<img src="https://img.shields.io/badge/backend-node.js-fcf6e6?style=flat-square">
+<img src="https://img.shields.io/badge/frontend-react-4e0115?style=flat-square">
+<img src="https://img.shields.io/badge/database-supabase-fcf6e6?style=flat-square">
 
-### Gestión de Películas
+</div>
 
-* Crear, editar y eliminar películas.
-* Subida de pósters.
-* Activar o desactivar películas.
-* Marcar películas como destacadas.
-* Filtrar por género.
-* Búsqueda por título.
+---
 
-### Sistema de Tiquetes
+We are a student group focused on exploring emerging technologies and developing innovative solutions.
 
-* Selección interactiva de asientos.
-* Bloqueo temporal durante la compra.
-* Generación automática de códigos QR.
-* Descarga de tiquetes en PDF.
-* Validación de entradas mediante QR.
+As part of our learning and experimentation process, we have created a web application designed to streamline cinema management. It allows you to manage movies, showtimes, users, and ticket sales through an intuitive interface and a secure access control system.
 
-### Gestión de Usuarios
+It also features interactive seat selection, QR code generation for ticket validation, and real-time administrative reports.
 
-* Registro e inicio de sesión.
-* Control de acceso por roles.
-* Administración de usuarios.
-* Historial de accesos.
+| | |
+|---|---|
+| **Movie Management** | creating movies, editing, deleting movies, uploading posters, activating/deactivating movies, marking movies as featured, filtering by genre, searching by title. |
+| **Showtime Management** | creating, editing, deleting showtimes, setting prices, and managing ticket sales. |
+| **Ticket Management** | interactive seat selection, QR code generation for ticket validation, and real-time statistics on tickets sales. |
+| **User Management** | creating, editing, deleting users, setting roles, and history of access logs. |
 
-### Panel Administrativo
+You can do all of this here.
 
-* Estadísticas de ventas en tiempo real.
-* Reportes por rango de fechas.
-* Historial completo de ventas.
-* Gestión de funciones y horarios.
+---
 
-### Gestión de Funciones
+## Functions such as...
 
-* Creación y edición de funciones.
-* Asignación de salas.
-* Configuración de precios.
-* Gestión de fechas y horarios.
-* Cancelación de funciones.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### Sistema de Asientos
+<h3>Administrator</h3>
 
-* 150 asientos organizados en 15 filas × 10 columnas.
-* Visualización en tiempo real.
-* Bloqueo automático durante la selección.
-* Prevención de reservas duplicadas.
+You can manage movies, features, and users, as well as access statistics, sales reports, and ticket validation.
 
+</td>
+<td width="50%" valign="top">
 
-## Tecnologías Utilizadas
+<h3>Operator</h3>
 
-| Capa | Tecnología |
-|--------|------------|
-| Frontend | React + Vite |
-| Backend | Node.js + Express.js |
-| Base de Datos | Supabase PostgreSQL |
-| Generación QR | QRCode |
-| PDF | PDFKit |
-| Despliegue | Render |
+Sell tickets, validate tickets, and view basic statistics.
 
+</td>
+</tr>
+</table>
 
-## Arquitectura
+---
 
-```text
-Cliente
-   │
-   ▼
-Frontend (React)
-   │
-   ▼
-API REST (Node.js + Express)
-   │
-   ▼
-PostgreSQL
+## Technologies Used
+
+<img src="https://img.shields.io/badge/Node.js-+22-fcf6e6?style=flat-square"> <img src="https://img.shields.io/badge/Express.js-+5.2-4e0115?style=flat-square"> <img src="https://img.shields.io/badge/React-+19.0-fcf6e6?style=flat-square"> <img src="https://img.shields.io/badge/Vite-6.0-4e0115?style=flat-square"> <img src="https://img.shields.io/badge/Supabase-PostgreSQL-fcf6e6?style=flat-square"> <img src="https://img.shields.io/badge/Deployment-Render-4e0115?style=flat-square">
+
+---
+
+## System Architecture
+
+```
+The End → Users → Frontend → Backend → Database
 ```
 
+---
 
-## Requisitos
-
-- Node.js 18 o superior
-- Base de datos en Supabase
-- npm
-
-
-## Instalación
-
-### 1. Clonar el repositorio
+## Installation
 
 ```bash
-git clone https://github.com/emilymontec/THE-END.git
-cd the-end
+git clone https://github.com/emilymontec/the-end.git; cd the-end
 ```
 
-### 2. Instalar dependencias del Backend
+Clone the repository on your computer and navigate to the project directory.
+
+### Set environment variables
+
+Create a `.env` file in the directory `backend` and `frontend` in the project and add the following variables:
 
 ```bash
-cd backend
-npm install
-```
-
-### 3. Instalar dependencias del Frontend
-
-```bash
-cd ../frontend
-npm install
-```
-
-### 4. Configurar variables de entorno
-
-#### Backend (`backend/.env`)
-
-```env
-SUPABASE_DB_URL=https://id.supabase.co
-ADMIN_USERNAME=admin@cinema.com
+# .env backend
+SUPABASE_DB_URL=SUPABASE_DB_URL
+ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 PORT=4000
 ```
 
-#### Frontend (`frontend/.env`)
-
-```env
+```bash
+# .env frontend
 VITE_API_URL=http://localhost:4000
 ```
 
-### 5. Configurar la base de datos
+### Configure backend
 
-Ejecutar el script SQL:
-
-```bash
-psql -U tu_usuario -d tu_base_datos -f entitys.sql
-```
-
-### 6. Iniciar el proyecto
-
-Backend:
-
+Install backend dependencies
 ```bash
 cd backend
+npm install
+```
+
+### Configure frontend
+
+Install frontend dependencies
+```bash
+cd frontend
+npm install
+```
+<sub>You can open a new terminal or put the command `cd ../frontend` in the same terminal.</sub>
+
+### Configure the database
+
+Run the SQL script:
+```bash
+psql -U your_username -d your_database_name -f entitys.sql
+```
+
+### Execute
+
+```bash
+npm install
 npm start
 ```
 
-Frontend:
+> The app will be available at: http://localhost:5173
 
+---
+
+## File Structure
 ```bash
-cd frontend
-npm run dev
+   Parkplatz
+      │
+      ├── frontend/
+      │   ├── src/                  # Código fuente del frontend
+      │   │    ├── components/      # Componentes React
+      │   │    ├── pages/           # Páginas React
+      │   │    ├── api.js
+      │   │    ├── App.css
+      │   │    ├── App.jsx
+      │   │    ├── index.css
+      │   │    └── main.jsx
+      │   ├── public/               # Archivos estáticos
+      │   ├── dist/                 # Build de producción (generado)
+      │   ├── .env                  # Variables de entorno (NO subir a GitHub)
+      │   ├── .gitignore
+      │   ├── eslint.config.js
+      │   ├── index.html
+      │   ├── package.json
+      │   ├── README.md
+      │   └── vite.config.js
+      │
+      ├── backend/
+      │   └── src/
+      │        ├── config/
+      │        │      └── db.js          # Configuración de Supabase
+      │        └── routes/
+      │        │      ├── categorias.js
+      │        │      ├── movies.js
+      │        │      ├── salas.js
+      │        │      ├── showtimes.js
+      │        │      ├── tickets.js
+      │        │      ├── uploads.js
+      │        │      └── users.js
+      │        ├── index.js               # Punto de entrada del servidor
+      │        ├──.env                  # Variables de entorno (NO subir a GitHub)
+      │        └── package.json
+      ├── README.md
+      ├── LICENSE
+      └── entitys.sql
 ```
-
-Aplicación disponible en:
-
-```text
-http://localhost:5173
-```
-
-
-## Variables de Entorno
-
-### Backend
-
-| Variable | Descripción |
-|-----------|------------|
-| SUPABASE_DB_URL | URL de conexión a Supabase PostgreSQL |
-| ADMIN_USERNAME | Usuario administrador inicial |
-| ADMIN_PASSWORD | Contraseña administrador inicial |
-| PORT | Puerto del servidor |
-
-### Frontend
-
-| Variable | Descripción |
-|-----------|------------|
-| VITE_API_URL | URL del backend |
-
-
-## APIs
-
-### Películas (`/movies`)
-
-| Método | Ruta | Descripción |
-|---------|--------|------------|
-| GET | `/movies` | Obtener todas las películas |
-| GET | `/movies/:id` | Obtener película por ID |
-| POST | `/movies` | Crear película |
-| PUT | `/movies/:id` | Actualizar película |
-| DELETE | `/movies/:id` | Eliminar película |
-| PATCH | `/movies/:id/status` | Cambiar estado |
-
-### Funciones (`/showtimes`)
-
-| Método | Ruta | Descripción |
-|---------|--------|------------|
-| GET | `/showtimes` | Obtener funciones |
-| GET | `/showtimes/:id` | Obtener función por ID |
-| GET | `/showtimes/:id/seats` | Obtener asientos |
-| POST | `/showtimes` | Crear función |
-| POST | `/showtimes/:id/lock-seats` | Bloquear asientos |
-| DELETE | `/showtimes/:id` | Eliminar función |
-
-### Tiquetes (`/tickets`)
-
-| Método | Ruta | Descripción |
-|---------|--------|------------|
-| GET | `/tickets` | Obtener tiquetes |
-| GET | `/tickets/stats/summary` | Estadísticas de ventas |
-| GET | `/tickets/validate/:code` | Validar tiquete |
-| POST | `/tickets` | Crear tiquete |
-| POST | `/tickets/use/:code` | Marcar como usado |
-| DELETE | `/tickets/:id` | Cancelar tiquete |
 
 ---
 
-### Usuarios (`/users`)
+## License
 
-| Método | Ruta | Descripción |
-|---------|--------|------------|
-| POST | `/users/login` | Iniciar sesión |
-| POST | `/users/register` | Registrar usuario |
-| GET | `/users/admin/users` | Listar usuarios |
-| POST | `/users/admin/users` | Crear usuario |
-| DELETE | `/users/admin/users/:id` | Eliminar usuario |
-
-### Upload (`/upload`)
-
-| Método | Ruta | Descripción |
-|---------|--------|------------|
-| POST | `/upload` | Subir imagen |
-
-
-## Roles del Sistema
-
-### Administrador
-
-* Gestión completa de películas.
-* Gestión de funciones.
-* Administración de usuarios.
-* Acceso a estadísticas.
-* Reportes de ventas.
-* Validación de tiquetes.
-
-### Operario
-
-* Venta de tiquetes.
-* Validación de entradas.
-* Consulta de estadísticas básicas.
-
-### Cliente
-
-* Visualización de cartelera.
-* Compra de tiquetes.
-* Selección de asientos.
-* Descarga de entradas.
-* Historial de compras.
-
-
-## Seguridad
-
-* Autenticación de usuarios.
-* Control de acceso basado en roles.
-* Bloqueo temporal de asientos.
-* Prevención de reservas duplicadas.
-* Validación de tiquetes mediante QR.
-* Configuración de CORS.
-* Protección de rutas administrativas.
-
-
-## Notas
-
-* El sistema genera automáticamente los 150 asientos si no existen.
-* Los asientos se bloquean temporalmente durante el proceso de compra.
-* Cada tiquete genera un código QR único para validación.
-* Las funciones pueden configurarse con diferentes precios y horarios.
-
-
-## Contribuciones
-
-1. Haz un fork del repositorio.
-2. Crea una rama para tu nueva funcionalidad:
-```bash
-git checkout -b feature/nueva-funcionalidad
-```
-3. Realiza tus cambios.
-4. Haz commit y push.
-5. Abre un Pull Request.
+This project is licensed under the **[MIT License](./LICENSE)**. See the file for more information.
 
 ---
 
-## Licencia
-
-Este proyecto está bajo la **Licencia ISC**.
-
-Consulta el archivo `LICENSE` para más información.
-
----
-
-## Equipo de Desarrollo
-
-| Integrante | Rol |	GitHub 
-|---|---|---|
-| Jemima Cerpa | Desarrollo Frontend | [jemcu](https://github.com/jemcu) |
-| Jailiss Gómez	| Diseño UX/UI | [jailisita](https://github.com/jailisita) |
-| Melany Tesillo | Desarrollo Frontend | [mptse](https://github.com/mptse) |
-| Emily Monterrosa | Desarrollo Backend | [emilymontec](https://github.com/emilymontec) |
+<p align="center">
+  <strong>The system is not deployed.</strong>
+</p>
