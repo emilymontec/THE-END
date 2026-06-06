@@ -183,7 +183,7 @@ npm start
 
 ## License
 
-This project is licensed under the **[MIT License](./LICENSE)**. See the file for more information.
+This project is licensed under the **[ISC License](./LICENSE)**. See the file for more information.
 
 ---
 
